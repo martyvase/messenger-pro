@@ -1,0 +1,14 @@
+{
+  "name": "messenger-pro",
+  "version": "2.0.0",
+  "description": "Рабочий мессенджер",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2",
+    "uuid": "^9.0.0",
+    "bcryptjs": "^2.4.3"
+  }
+}

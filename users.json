@@ -1,0 +1,34 @@
+[
+  {
+    "id": "fa6fc9fc-3e85-4b78-8df8-75ca08c535af",
+    "username": "Pripapa",
+    "password": "$2a$10$PRyanyurLjPcopf2w6dJ0.Xf8D2GZd5YdquyTskOcKZdfvD6/S8VW",
+    "createdAt": "2026-02-11T09:45:43.584Z",
+    "lastSeen": "2026-02-11T14:40:25.656Z",
+    "status": "online"
+  },
+  {
+    "id": "a4cde246-c92a-49bf-9770-1caa93bbc719",
+    "username": "Test",
+    "password": "$2a$10$mIGZFWcQx.6xV.ye4hYhlefrrvS2kzXL.J4zBgxZVOps5zTUVG4/i",
+    "createdAt": "2026-02-11T09:58:46.339Z",
+    "lastSeen": "2026-02-11T14:21:21.997Z",
+    "status": "offline"
+  },
+  {
+    "id": "d1b27eef-bd4f-490a-a348-3c26d306aa56",
+    "username": "Lanna",
+    "password": "$2a$10$PUH36Pe5KQE76csx90.Mreo4KVyzsSlGeJYlJgHqoHtY8enN8oQ0W",
+    "createdAt": "2026-02-11T10:09:09.141Z",
+    "lastSeen": "2026-02-11T14:35:45.923Z",
+    "status": "offline"
+  },
+  {
+    "id": "78d20904-2bfc-49e4-93f1-d66073f9068c",
+    "username": "P.A",
+    "password": "$2a$10$7QER/fFViZNj8CcYHF9hIOZNxDEVpJHGl6gVjTlf6HByk2ic28dJm",
+    "createdAt": "2026-02-11T14:30:17.558Z",
+    "lastSeen": "2026-02-11T14:38:32.929Z",
+    "status": "offline"
+  }
+]
