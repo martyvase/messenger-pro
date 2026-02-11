@@ -12,7 +12,7 @@
 ## 🚀 Установка на свой сервер
 
 ```bash
-git clone git@github.com:ваш-логин/messenger-pro.git
+git clone git@github.com:martyvase/messenger-pro.git
 cd messenger-pro
 npm install
 node server.js
