@@ -1,0 +1,28 @@
+# Данные пользователей (НИКОГДА НЕ ПУШИТЬ!)
+users.json
+messages.json
+*.db
+*.sqlite
+
+# Логи
+*.log
+logs/
+npm-debug.log*
+
+# Зависимости
+node_modules/
+
+# Временные файлы
+*.tmp
+.DS_Store
+*.swp
+*.swo
+
+# Локальные конфиги
+.env
+config.local.js
+staging-*.json
+
+# Системные файлы
+.vscode/
+.idea/
