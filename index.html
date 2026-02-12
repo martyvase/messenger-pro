@@ -916,6 +916,195 @@
         }
     });
 </script>
+<!-- ========== ТЁМНАЯ ТЕМА (ДОБАВЛЕНО) ========== -->
+<style>
+    /* CSS-переменные для тем */
+    :root {
+        --bg-color: #f0f2f5;
+        --sidebar-bg: white;
+        --chat-bg: #f8f9fa;
+        --text-primary: #333;
+        --text-secondary: #666;
+        --border-color: #ddd;
+        --hover-bg: #f5f5f5;
+        --active-bg: #e3f2fd;
+        --message-incoming: white;
+        --message-outgoing: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --btn-bg: rgba(255,255,255,0.2);
+        --btn-hover: rgba(255,255,255,0.3);
+    }
 
+    [data-theme="dark"] {
+        --bg-color: #121212;
+        --sidebar-bg: #1e1e1e;
+        --chat-bg: #1a1a1a;
+        --text-primary: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --border-color: #404040;
+        --hover-bg: #2a2a2a;
+        --active-bg: #2c3e50;
+        --message-incoming: #2d2d2d;
+        --message-outgoing: linear-gradient(135deg, #2c3e50 0%, #1a2634 100%);
+        --btn-bg: rgba(255,255,255,0.1);
+        --btn-hover: rgba(255,255,255,0.2);
+    }
+
+    /* Кнопка переключателя */
+    .theme-toggle-btn {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        padding: 10px 20px;
+        background: var(--btn-bg);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 30px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        backdrop-filter: blur(5px);
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .theme-toggle-btn:hover {
+        background: var(--btn-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+
+    /* Применяем переменные к существующим элементам */
+    body {
+        background: var(--bg-color) !important;
+    }
+
+    .sidebar {
+        background: var(--sidebar-bg) !important;
+        border-right-color: var(--border-color) !important;
+    }
+
+    .chat-area, .messages-container {
+        background: var(--chat-bg) !important;
+    }
+
+    .chat-header, .input-area {
+        background: var(--sidebar-bg) !important;
+        border-bottom-color: var(--border-color) !important;
+        border-top-color: var(--border-color) !important;
+    }
+
+    .user-item {
+        color: var(--text-primary) !important;
+    }
+
+    .user-item:hover {
+        background: var(--hover-bg) !important;
+    }
+
+    .user-item.active {
+        background: var(--active-bg) !important;
+    }
+
+    .user-details-small .last-seen {
+        color: var(--text-secondary) !important;
+    }
+
+    .message.incoming .message-content {
+        background: var(--message-incoming) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+
+    .message.outgoing .message-content {
+        background: var(--message-outgoing) !important;
+        color: white !important;
+    }
+
+    .message-time {
+        color: var(--text-secondary) !important;
+    }
+
+    #searchUsers, #messageInput {
+        background: var(--sidebar-bg) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+
+    #searchUsers::placeholder, #messageInput::placeholder {
+        color: var(--text-secondary) !important;
+    }
+
+    .search-container {
+        border-bottom-color: var(--border-color) !important;
+    }
+
+    .logout-btn {
+        border-top-color: var(--border-color) !important;
+    }
+
+    .no-chat-selected {
+        color: var(--text-secondary) !important;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--chat-bg) !important;
+    }
+
+    .menu-toggle {
+        background: var(--message-outgoing) !important;
+    }
+
+    /* Адаптация для мобильных */
+    @media (max-width: 768px) {
+        .theme-toggle-btn {
+            top: 80px;
+            right: 15px;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+    }
+</style>
+
+<!-- Кнопка переключения темы -->
+<button id="themeToggleBtn" class="theme-toggle-btn">🌙 Тёмная</button>
+
+<script>
+    (function() {
+        // Инициализация темы
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            updateButton(savedTheme);
+        }
+
+        // Переключение темы
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            updateButton(newTheme);
+        }
+
+        // Обновление текста кнопки
+        function updateButton(theme) {
+            const btn = document.getElementById('themeToggleBtn');
+            if (btn) {
+                btn.textContent = theme === 'dark' ? '☀️ Светлая' : '🌙 Тёмная';
+            }
+        }
+
+        // Добавляем обработчик события после загрузки страницы
+        window.addEventListener('DOMContentLoaded', function() {
+            initTheme();
+            const themeBtn = document.getElementById('themeToggleBtn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', toggleTheme);
+            }
+        });
+    })();
+</script>
+<!-- ========== КОНЕЦ БЛОКА ТЁМНОЙ ТЕМЫ ========== -->
 </body>
 </html>
