@@ -49,6 +49,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
+            width: 100%;
         }
         
         .user-avatar {
@@ -343,7 +344,185 @@
             transform: scale(1.05);
         }
         
-        /* ========== МОБИЛЬНАЯ АДАПТАЦИЯ ========== */
+        /* ========== ТЁМНАЯ ТЕМА - ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ========== */
+        :root {
+            --bg-color: #f0f2f5;
+            --sidebar-bg: white;
+            --chat-bg: #f8f9fa;
+            --text-primary: #333;
+            --text-secondary: #666;
+            --border-color: #ddd;
+            --hover-bg: #f5f5f5;
+            --active-bg: #e3f2fd;
+            --message-incoming: white;
+            --message-outgoing: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --sidebar-bg: #1e1e1e;
+            --chat-bg: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: #404040;
+            --hover-bg: #2a2a2a;
+            --active-bg: #2c3e50;
+            --message-incoming: #2d2d2d;
+            --message-outgoing: linear-gradient(135deg, #2c3e50 0%, #1a2634 100%);
+        }
+
+        /* Применение тем */
+        body {
+            background: var(--bg-color) !important;
+        }
+
+        .sidebar {
+            background: var(--sidebar-bg) !important;
+            border-right-color: var(--border-color) !important;
+        }
+
+        .chat-area, .messages-container {
+            background: var(--chat-bg) !important;
+        }
+
+        .chat-header, .input-area {
+            background: var(--sidebar-bg) !important;
+            border-bottom-color: var(--border-color) !important;
+            border-top-color: var(--border-color) !important;
+        }
+
+        .user-item {
+            color: var(--text-primary) !important;
+        }
+
+        .user-item:hover {
+            background: var(--hover-bg) !important;
+        }
+
+        .user-item.active {
+            background: var(--active-bg) !important;
+        }
+
+        .user-details-small .last-seen {
+            color: var(--text-secondary) !important;
+        }
+
+        .message.incoming .message-content {
+            background: var(--message-incoming) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .message.outgoing .message-content {
+            background: var(--message-outgoing) !important;
+            color: white !important;
+        }
+
+        .message-time {
+            color: var(--text-secondary) !important;
+        }
+
+        #searchUsers, #messageInput {
+            background: var(--sidebar-bg) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        #searchUsers::placeholder, #messageInput::placeholder {
+            color: var(--text-secondary) !important;
+        }
+
+        .search-container {
+            border-bottom-color: var(--border-color) !important;
+        }
+
+        .logout-btn {
+            border-top-color: var(--border-color) !important;
+        }
+
+        .no-chat-selected {
+            color: var(--text-secondary) !important;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--chat-bg) !important;
+        }
+
+        /* ===== ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ===== */
+        .theme-switch-sidebar {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+        }
+
+        .theme-switch-sidebar .theme-switch {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+            outline: none;
+        }
+
+        .theme-switch-sidebar .theme-switch-track {
+            width: 52px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 26px;
+            padding: 2px;
+            transition: background 0.3s ease;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] .theme-switch-sidebar .theme-switch-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-switch-sidebar .theme-switch-thumb {
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transform: translateX(0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        [data-theme="dark"] .theme-switch-sidebar .theme-switch-thumb {
+            transform: translateX(26px);
+            background: #2c3e50;
+        }
+
+        .theme-switch-sidebar .theme-icon {
+            position: absolute;
+            font-size: 14px;
+            line-height: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .theme-switch-sidebar .theme-icon.sun {
+            opacity: 1;
+            color: #fbbf24;
+        }
+
+        .theme-switch-sidebar .theme-icon.moon {
+            opacity: 0;
+            color: #f1c40f;
+        }
+
+        [data-theme="dark"] .theme-switch-sidebar .theme-icon.sun {
+            opacity: 0;
+        }
+
+        [data-theme="dark"] .theme-switch-sidebar .theme-icon.moon {
+            opacity: 1;
+        }
+
+        /* Адаптация для мобильных */
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -407,6 +586,17 @@
             #messageInput {
                 font-size: 16px !important;
             }
+            
+            .user-info {
+                flex-wrap: wrap;
+            }
+            
+            .theme-switch-sidebar {
+                margin-left: 0;
+                margin-top: 10px;
+                width: 100%;
+                justify-content: flex-end;
+            }
         }
         
         .menu-toggle {
@@ -433,7 +623,7 @@
         }
         
         ::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: var(--chat-bg) !important;
         }
         
         ::-webkit-scrollbar-thumb {
@@ -455,6 +645,18 @@
                 <div class="user-details">
                     <h3 id="currentUsername">Загрузка...</h3>
                     <div class="status online" id="userStatus">● онлайн</div>
+                </div>
+                
+                <!-- ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ В САЙДБАРЕ -->
+                <div class="theme-switch-sidebar">
+                    <button id="themeToggleBtn" class="theme-switch" aria-label="Переключить тему">
+                        <div class="theme-switch-track">
+                            <div class="theme-switch-thumb">
+                                <span class="theme-icon sun">☀️</span>
+                                <span class="theme-icon moon">🌙</span>
+                            </div>
+                        </div>
+                    </button>
                 </div>
             </div>
         </div>
@@ -503,8 +705,8 @@
             this.ws = null;
             this.currentChat = null;
             this.users = [];
-            this.messages = new Map(); // userId -> массив сообщений
-            this.unread = new Map();    // userId -> количество непрочитанных
+            this.messages = new Map();
+            this.unread = new Map();
             
             if (!this.userId || !this.username) {
                 window.location.href = 'login.html';
@@ -515,23 +717,24 @@
         }
         
         async init() {
+            this.initTheme();
             this.bindEvents();
             await this.loadUsers();
             this.connectWebSocket();
             this.updateUI();
             
-            // Загружаем пользователей каждые 30 секунд
             setInterval(() => this.loadUsers(), 30000);
         }
         
+        initTheme() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        }
+        
         bindEvents() {
-            // Выход
             document.getElementById('logoutBtn').onclick = () => this.logout();
-            
-            // Отправка сообщения
             document.getElementById('sendBtn').onclick = () => this.sendMessage();
             
-            // Поле ввода
             const input = document.getElementById('messageInput');
             input.onkeypress = (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -545,10 +748,8 @@
                 this.style.height = this.scrollHeight + 'px';
             };
             
-            // Поиск
             document.getElementById('searchUsers').oninput = (e) => this.filterUsers(e.target.value);
             
-            // Закрытие сайдбара на мобильных
             document.addEventListener('click', (e) => {
                 const sidebar = document.getElementById('sidebar');
                 const menuBtn = document.getElementById('menuToggle');
@@ -560,9 +761,22 @@
                     sidebar.classList.remove('active');
                 }
             });
+            
+            // Переключатель темы
+            const themeBtn = document.getElementById('themeToggleBtn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', this.toggleTheme);
+            }
         }
         
-        // ========== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ ==========
+        toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // ... остальные методы без изменений ...
         async loadUsers() {
             try {
                 const response = await fetch('/api/users');
@@ -616,15 +830,12 @@
             this.renderUsersList(searchTerm);
         }
         
-        // ========== ВЫБОР ПОЛЬЗОВАТЕЛЯ ==========
         selectUser(userId) {
             const user = this.users.find(u => u.id === userId);
             if (!user) return;
             
-            // Переключаем текущий чат
             this.currentChat = user;
             
-            // МГНОВЕННО обновляем UI
             document.getElementById('chatHeader').style.display = 'flex';
             document.getElementById('chatUserName').textContent = user.username;
             document.getElementById('chatUserAvatar').textContent = user.username.charAt(0).toUpperCase();
@@ -632,35 +843,22 @@
             document.getElementById('chatUserStatus').className = `status ${user.status === 'online' ? 'online' : 'offline'}`;
             document.getElementById('inputArea').style.display = 'flex';
             
-            // Сбрасываем счетчик непрочитанных для этого чата
             this.unread.delete(userId);
-            
-            // Обновляем список пользователей (убираем счетчик)
             this.renderUsersList(document.getElementById('searchUsers').value);
-            
-            // Загружаем и отображаем историю
             this.loadChatHistory(userId);
             
-            // Закрываем меню на мобильных
             document.getElementById('sidebar').classList.remove('active');
         }
         
-        // ========== ИСТОРИЯ СООБЩЕНИЙ ==========
         async loadChatHistory(userId) {
             try {
                 const response = await fetch(`/api/messages/${this.userId}/${userId}`);
                 if (response.ok) {
                     const messages = await response.json();
-                    
-                    // Сортируем по времени
                     const sortedMessages = messages.sort((a, b) => 
                         new Date(a.timestamp) - new Date(b.timestamp)
                     );
-                    
-                    // Сохраняем в Map
                     this.messages.set(userId, sortedMessages);
-                    
-                    // МГНОВЕННО отображаем
                     this.renderMessages(userId);
                 }
             } catch (error) {
@@ -669,7 +867,6 @@
         }
         
         renderMessages(userId) {
-            // Показываем только если это текущий чат
             if (this.currentChat?.id !== userId) return;
             
             const container = document.getElementById('messagesContainer');
@@ -709,7 +906,6 @@
             }, 20);
         }
         
-        // ========== WEB-SOCKET ==========
         connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
@@ -751,52 +947,37 @@
             };
         }
         
-        // ========== ВХОДЯЩИЕ СООБЩЕНИЯ - МГНОВЕННО! ==========
         handleIncomingMessage(msg) {
             const fromId = msg.from;
             
-            // Инициализируем массив сообщений для этого пользователя
             if (!this.messages.has(fromId)) {
                 this.messages.set(fromId, []);
             }
             
             const chatMessages = this.messages.get(fromId);
-            
-            // Проверяем на дубликаты
             const exists = chatMessages.some(m => m.id === msg.id);
+            
             if (!exists) {
-                // Добавляем сообщение
                 chatMessages.push(msg);
-                
-                // Сортируем по времени
                 chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
                 
-                // ЕСЛИ ЭТО ТЕКУЩИЙ ЧАТ - МГНОВЕННО ОТОБРАЖАЕМ
                 if (this.currentChat?.id === fromId) {
                     this.renderMessages(fromId);
                 } else {
-                    // ИНАЧЕ - увеличиваем счетчик непрочитанных
                     const count = this.unread.get(fromId) || 0;
                     this.unread.set(fromId, count + 1);
-                    
-                    // МГНОВЕННО обновляем список пользователей (показываем счетчик)
                     this.renderUsersList(document.getElementById('searchUsers').value);
                 }
             }
         }
         
-        // ========== ИСХОДЯЩИЕ СООБЩЕНИЯ ==========
         sendMessage() {
-            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
-                return;
-            }
+            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
             
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
-            
             if (!text) return;
             
-            // СОЗДАЕМ ВРЕМЕННОЕ СООБЩЕНИЕ ДЛЯ МГНОВЕННОГО ОТОБРАЖЕНИЯ
             const tempId = 'temp_' + Date.now();
             const tempMessage = {
                 id: tempId,
@@ -806,44 +987,35 @@
                 timestamp: new Date().toISOString()
             };
             
-            // Инициализируем массив сообщений для текущего чата
             if (!this.messages.has(this.currentChat.id)) {
                 this.messages.set(this.currentChat.id, []);
             }
             
-            // Добавляем сообщение
             const chatMessages = this.messages.get(this.currentChat.id);
             chatMessages.push(tempMessage);
             chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
             
-            // МГНОВЕННО ОТОБРАЖАЕМ
             this.renderMessages(this.currentChat.id);
             
-            // Отправляем на сервер
             this.ws.send(JSON.stringify({
                 type: 'private_message',
                 to: this.currentChat.id,
                 text: text
             }));
             
-            // Очищаем поле ввода
             input.value = '';
             input.style.height = 'auto';
         }
         
-        // ========== СТАТУСЫ ОНЛАЙН ==========
         updateOnlineUsers(onlineUsers) {
-            // Обновляем статусы
             this.users.forEach(user => {
                 const onlineUser = onlineUsers.find(u => u.id === user.id);
                 user.status = onlineUser ? 'online' : 'offline';
                 if (onlineUser) user.lastSeen = onlineUser.lastSeen;
             });
             
-            // Обновляем список
             this.renderUsersList(document.getElementById('searchUsers').value);
             
-            // Обновляем статус текущего чата
             if (this.currentChat) {
                 const onlineUser = onlineUsers.find(u => u.id === this.currentChat.id);
                 this.currentChat.status = onlineUser ? 'online' : 'offline';
@@ -852,7 +1024,6 @@
             }
         }
         
-        // ========== ПЕЧАТАЕТ... ==========
         showTypingIndicator(userId, isTyping) {
             if (this.currentChat?.id !== userId) return;
             
@@ -872,7 +1043,6 @@
             }
         }
         
-        // ========== UI ==========
         updateUI() {
             document.getElementById('userAvatar').textContent = this.username?.charAt(0).toUpperCase() || 'U';
             document.getElementById('currentUsername').textContent = this.username || 'Пользователь';
@@ -891,14 +1061,10 @@
         }
     }
 
-    // ========== ЗАПУСК ==========
-    let messenger;
     window.addEventListener('DOMContentLoaded', () => {
-        messenger = new Messenger();
-        window.messenger = messenger;
+        window.messenger = new Messenger();
     });
 
-    // ========== IPHONE ФИКСЫ ==========
     window.addEventListener('load', function() {
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         if (isIOS) {
