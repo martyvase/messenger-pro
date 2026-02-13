@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover, user-scalable=no">
     <title>Мессенджер PRO</title>
     <style>
-        /* ========== ОСНОВНЫЕ СТИЛИ ========== */
         * {
             margin: 0;
             padding: 0;
@@ -27,7 +26,6 @@
             position: relative;
         }
         
-        /* ========== САЙДБАР ========== */
         .sidebar {
             width: 300px;
             background: white;
@@ -82,7 +80,6 @@
             color: #999;
         }
         
-        /* Вкладки для переключения между личными чатами и группами */
         .chat-tabs {
             display: flex;
             padding: 10px;
@@ -225,7 +222,6 @@
             font-weight: 500;
         }
         
-        /* Кнопка создания группы */
         .create-group-btn-container {
             margin-top: 10px;
             padding: 0 20px 20px 20px;
@@ -248,7 +244,6 @@
             transform: translateY(-2px);
         }
         
-        /* ========== ОСНОВНАЯ ОБЛАСТЬ ЧАТА ========== */
         .chat-area {
             flex: 1;
             display: flex;
@@ -423,7 +418,6 @@
             transform: scale(1.05);
         }
         
-        /* ========== ТЁМНАЯ ТЕМА - ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ========== */
         :root {
             --bg-color: #f0f2f5;
             --sidebar-bg: white;
@@ -450,7 +444,6 @@
             --message-outgoing: linear-gradient(135deg, #2c3e50 0%, #1a2634 100%);
         }
 
-        /* Применение тем */
         body {
             background: var(--bg-color) !important;
         }
@@ -528,7 +521,6 @@
             background: var(--chat-bg) !important;
         }
 
-        /* ===== ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ===== */
         .theme-switch-sidebar {
             margin-left: auto;
             display: flex;
@@ -602,7 +594,6 @@
             opacity: 1;
         }
 
-        /* Стили для модального окна создания группы */
         .modal {
             display: none;
             position: fixed;
@@ -706,7 +697,6 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        /* Адаптация для мобильных */
         @media (max-width: 768px) {
             .sidebar {
                 position: fixed;
@@ -787,7 +777,6 @@
             display: none;
         }
         
-        /* ========== IPHONE ФИКСЫ ========== */
         @supports (-webkit-touch-callout: none) {
             body, .container, .chat-area {
                 height: -webkit-fill-available;
@@ -821,7 +810,6 @@
 <a href="#" id="menuToggle" class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('active'); return false;">☰</a>
 
 <div class="container">
-    <!-- Сайдбар -->
     <div class="sidebar" id="sidebar">
         <div class="user-profile">
             <div class="user-info">
@@ -831,7 +819,6 @@
                     <div class="status online" id="userStatus">● онлайн</div>
                 </div>
                 
-                <!-- ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ В САЙДБАРЕ -->
                 <div class="theme-switch-sidebar">
                     <button id="themeToggleBtn" class="theme-switch" aria-label="Переключить тему">
                         <div class="theme-switch-track">
@@ -843,13 +830,11 @@
                     </button>
                 </div>
             </div>
-            <!-- Кнопка создания группы -->
             <div class="create-group-btn-container">
                 <button id="createGroupBtn" class="create-group-btn">➕ Создать группу</button>
             </div>
         </div>
         
-        <!-- Вкладки Личные / Группы -->
         <div class="chat-tabs">
             <button class="tab-btn active" data-tab="private">💬 Личные</button>
             <button class="tab-btn" data-tab="groups">👥 Группы</button>
@@ -868,7 +853,6 @@
         </div>
     </div>
     
-    <!-- Чат -->
     <div class="chat-area">
         <div class="chat-header" id="chatHeader" style="display: none;">
             <div class="user-avatar-small" id="chatUserAvatar">U</div>
@@ -893,7 +877,6 @@
     </div>
 </div>
 
-<!-- Модальное окно создания группы -->
 <div id="createGroupModal" class="modal" style="display: none;">
     <div class="modal-content">
         <h3>➕ Создать группу</h3>
@@ -982,13 +965,11 @@
                 }
             });
             
-            // Переключатель темы
             const themeBtn = document.getElementById('themeToggleBtn');
             if (themeBtn) {
                 themeBtn.addEventListener('click', this.toggleTheme);
             }
             
-            // Вкладки
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -998,18 +979,24 @@
                 });
             });
             
-            // Создание группы
             document.getElementById('createGroupBtn').addEventListener('click', () => this.showCreateGroupModal());
             document.getElementById('saveGroupBtn').addEventListener('click', () => this.createGroup());
             document.getElementById('cancelGroupBtn').addEventListener('click', () => this.hideCreateGroupModal());
         }
         
-        // Загрузка групп
         async loadGroups() {
             try {
                 const response = await fetch(`/api/groups?userId=${this.userId}`);
                 if (response.ok) {
                     this.groups = await response.json();
+                    if (this.currentGroup) {
+                        const stillExists = this.groups.some(g => g.id === this.currentGroup.id);
+                        if (!stillExists) {
+                            this.currentGroup = null;
+                            document.getElementById('chatHeader').style.display = 'none';
+                            document.getElementById('inputArea').style.display = 'none';
+                        }
+                    }
                     if (this.currentTab === 'groups') {
                         this.renderList();
                     }
@@ -1019,7 +1006,6 @@
             }
         }
         
-        // Фильтрация (общая для пользователей и групп)
         filterItems(searchTerm) {
             if (this.currentTab === 'private') {
                 this.renderUsersList(searchTerm);
@@ -1028,7 +1014,6 @@
             }
         }
         
-        // Отрисовка списка в зависимости от вкладки
         renderList() {
             const searchValue = document.getElementById('searchUsers').value;
             if (this.currentTab === 'private') {
@@ -1075,7 +1060,6 @@
             }).join('');
         }
         
-        // Отрисовка групп
         renderGroupsList(filter = '') {
             const usersList = document.getElementById('usersList');
             
@@ -1103,10 +1087,6 @@
             }).join('');
         }
         
-        filterUsers(searchTerm) {
-            this.renderUsersList(searchTerm);
-        }
-        
         selectUser(userId) {
             const user = this.users.find(u => u.id === userId);
             if (!user) return;
@@ -1132,7 +1112,6 @@
             document.getElementById('sidebar').classList.remove('active');
         }
         
-        // Выбор группы
         selectGroup(groupId) {
             const group = this.groups.find(g => g.id === groupId);
             if (!group) return;
@@ -1171,7 +1150,6 @@
             }
         }
         
-        // Загрузка истории группы
         async loadGroupHistory(groupId) {
             try {
                 const response = await fetch(`/api/group-messages/${groupId}`);
@@ -1219,7 +1197,6 @@
             this.scrollToBottom();
         }
         
-        // Отрисовка сообщений группы
         renderGroupMessages(groupId) {
             if (!this.currentGroup || this.currentGroup.id !== groupId) return;
             
@@ -1283,6 +1260,12 @@
                         case 'group_message':
                             this.handleIncomingGroupMessage(data.message);
                             break;
+                        case 'group_created':
+                            this.groups.push(data.group);
+                            if (this.currentTab === 'groups') {
+                                this.renderGroupsList();
+                            }
+                            break;
                         case 'online_users':
                             this.updateOnlineUsers(data.users);
                             break;
@@ -1331,7 +1314,6 @@
             }
         }
         
-        // Обработка входящих групповых сообщений
         handleIncomingGroupMessage(msg) {
             const groupId = msg.groupId;
             
@@ -1341,32 +1323,24 @@
             
             const chatMessages = this.groupMessages.get(groupId);
             
-            // Проверяем существование по ID или по tempId
-            const exists = chatMessages.some(m => 
-                m.id === msg.id || 
-                (msg.tempId && m.id === msg.tempId)
-            );
+            const tempIndex = chatMessages.findIndex(m => m.id === msg.tempId);
             
-            if (!exists) {
-                // Если это ответ на временное сообщение — заменяем временное на реальное
-                if (msg.tempId) {
-                    const tempIndex = chatMessages.findIndex(m => m.id === msg.tempId);
-                    if (tempIndex !== -1) {
-                        chatMessages[tempIndex] = msg; // заменяем
-                    } else {
-                        chatMessages.push(msg);
-                    }
-                } else {
+            if (tempIndex !== -1) {
+                chatMessages[tempIndex] = msg;
+            } else {
+                const exists = chatMessages.some(m => m.id === msg.id);
+                if (!exists) {
                     chatMessages.push(msg);
                 }
-                
-                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                if (this.currentGroup?.id === groupId) {
-                    this.renderGroupMessages(groupId);
-                }
-                this.loadGroups();
             }
+            
+            chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            if (this.currentGroup?.id === groupId) {
+                this.renderGroupMessages(groupId);
+            }
+            
+            this.loadGroups();
         }
         
         sendMessage() {
@@ -1377,7 +1351,6 @@
             if (!text) return;
             
             if (this.currentChat) {
-                // Личное сообщение
                 const tempId = 'temp_' + Date.now();
                 const tempMessage = {
                     id: tempId,
@@ -1404,7 +1377,6 @@
                 }));
                 
             } else if (this.currentGroup) {
-                // Сообщение в группу
                 const tempId = 'temp_' + Date.now();
                 const tempMessage = {
                     id: tempId,
@@ -1429,7 +1401,7 @@
                     type: 'group_message',
                     groupId: this.currentGroup.id,
                     text: text,
-                    tempId: tempId  // передаём ID временного сообщения
+                    tempId: tempId
                 }));
             }
             
@@ -1437,7 +1409,6 @@
             input.style.height = 'auto';
         }
         
-        // Модальное окно создания группы
         showCreateGroupModal() {
             const modal = document.getElementById('createGroupModal');
             const membersList = document.getElementById('groupMembersList');
@@ -1487,12 +1458,20 @@
                 
                 if (response.ok) {
                     const data = await response.json();
-                    this.groups.push(data.group);
-                    this.hideCreateGroupModal();
-                    this.renderGroupsList();
                     
-                    // Переключаемся на вкладку групп
+                    this.groups.push(data.group);
+                    
+                    this.hideCreateGroupModal();
+                    
+                    if (this.currentTab === 'groups') {
+                        this.renderGroupsList();
+                    }
+                    
                     document.querySelector('[data-tab="groups"]').click();
+                    
+                    setTimeout(() => {
+                        this.selectGroup(data.group.id);
+                    }, 100);
                 }
             } catch (error) {
                 console.error('Ошибка создания группы:', error);

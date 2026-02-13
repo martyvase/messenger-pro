@@ -8,20 +8,17 @@ const bcrypt = require('bcryptjs');
 // ========== ФАЙЛЫ ==========
 const USERS_FILE = path.join(__dirname, 'users.json');
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
-//  файлы для групп
 const GROUPS_FILE = path.join(__dirname, 'groups.json');
 const GROUP_MESSAGES_FILE = path.join(__dirname, 'group-messages.json');
 
 // Инициализация файлов
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
 if (!fs.existsSync(MESSAGES_FILE)) fs.writeFileSync(MESSAGES_FILE, '[]');
-// <-- NEW: инициализация файлов групп
 if (!fs.existsSync(GROUPS_FILE)) fs.writeFileSync(GROUPS_FILE, '[]');
 if (!fs.existsSync(GROUP_MESSAGES_FILE)) fs.writeFileSync(GROUP_MESSAGES_FILE, '[]');
 
 let users = JSON.parse(fs.readFileSync(USERS_FILE));
 let messages = JSON.parse(fs.readFileSync(MESSAGES_FILE));
-//  загрузка групп
 let groups = JSON.parse(fs.readFileSync(GROUPS_FILE));
 let groupMessages = JSON.parse(fs.readFileSync(GROUP_MESSAGES_FILE));
 
@@ -33,7 +30,6 @@ function saveMessages() {
     fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
 }
 
-//  функции сохранения групп
 function saveGroups() {
     fs.writeFileSync(GROUPS_FILE, JSON.stringify(groups, null, 2));
 }
@@ -56,13 +52,10 @@ const server = http.createServer((req, res) => {
     else if (url === '/api/login' && req.method === 'POST') handleLogin(req, res);
     else if (url === '/api/users' && req.method === 'GET') handleGetUsers(req, res);
     else if (url.startsWith('/api/messages/') && req.method === 'GET') handleGetMessages(req, res);
-    
-    //  API для групп
     else if (url === '/api/groups' && req.method === 'POST') handleCreateGroup(req, res);
     else if (url === '/api/groups' && req.method === 'GET') handleGetUserGroups(req, res);
     else if (url.startsWith('/api/groups/') && req.method === 'POST') handleAddToGroup(req, res);
     else if (url.startsWith('/api/group-messages/') && req.method === 'GET') handleGetGroupMessages(req, res);
-    
     else {
         res.writeHead(404);
         res.end('Not found');
@@ -185,7 +178,7 @@ function handleGetMessages(req, res) {
     res.end(JSON.stringify(chatMessages));
 }
 
-//  СОЗДАНИЕ ГРУППЫ
+// ========== СОЗДАНИЕ ГРУППЫ ==========
 function handleCreateGroup(req, res) {
     let body = '';
     req.on('data', chunk => body += chunk);
@@ -205,6 +198,19 @@ function handleCreateGroup(req, res) {
             groups.push(group);
             saveGroups();
             
+            // Оповещаем всех участников о новой группе
+            const groupCreatedMessage = JSON.stringify({
+                type: 'group_created',
+                group: group
+            });
+            
+            wss.clients.forEach(client => {
+                const user = onlineUsers.get(client);
+                if (user && group.members.includes(user.id) && client.readyState === WebSocket.OPEN) {
+                    client.send(groupCreatedMessage);
+                }
+            });
+            
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ success: true, group }));
         } catch (e) {
@@ -214,7 +220,7 @@ function handleCreateGroup(req, res) {
     });
 }
 
-//  ПОЛУЧИТЬ ГРУППЫ ПОЛЬЗОВАТЕЛЯ
+// ========== ПОЛУЧИТЬ ГРУППЫ ПОЛЬЗОВАТЕЛЯ ==========
 function handleGetUserGroups(req, res) {
     const userId = req.url.split('?userId=')[1];
     if (!userId) {
@@ -231,7 +237,7 @@ function handleGetUserGroups(req, res) {
     res.end(JSON.stringify(userGroups));
 }
 
-//  ДОБАВИТЬ УЧАСТНИКА В ГРУППУ
+// ========== ДОБАВИТЬ УЧАСТНИКА В ГРУППУ ==========
 function handleAddToGroup(req, res) {
     const parts = req.url.split('/');
     const groupId = parts[3];
@@ -252,6 +258,19 @@ function handleAddToGroup(req, res) {
             if (!group.members.includes(userId)) {
                 group.members.push(userId);
                 saveGroups();
+                
+                // Оповещаем нового участника
+                const groupUpdateMessage = JSON.stringify({
+                    type: 'group_updated',
+                    group: group
+                });
+                
+                wss.clients.forEach(client => {
+                    const user = onlineUsers.get(client);
+                    if (user && user.id === userId && client.readyState === WebSocket.OPEN) {
+                        client.send(groupUpdateMessage);
+                    }
+                });
             }
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -263,7 +282,7 @@ function handleAddToGroup(req, res) {
     });
 }
 
-// ПОЛУЧИТЬ СООБЩЕНИЯ ГРУППЫ
+// ========== ПОЛУЧИТЬ СООБЩЕНИЯ ГРУППЫ ==========
 function handleGetGroupMessages(req, res) {
     const groupId = req.url.split('/')[3];
     const chatMessages = groupMessages.filter(m => m.groupId === groupId);
@@ -285,14 +304,12 @@ wss.on('connection', (ws, req) => {
         
         console.log(`📋 Параметры: userId=${userId}, username=${username}`);
         
-        // Если нет параметров - создаем временные
         if (!userId || !username) {
             console.log('⚠️ Нет параметров, создаем временного пользователя');
             userId = 'temp_' + Date.now();
             username = 'User_' + Math.floor(Math.random() * 1000);
         }
         
-        // Находим или создаем пользователя
         let user = users.find(u => u.id === userId);
         if (!user) {
             user = {
@@ -309,21 +326,17 @@ wss.on('connection', (ws, req) => {
         user.lastSeen = new Date().toISOString();
         saveUsers();
         
-        // Сохраняем в onlineUsers
         onlineUsers.set(ws, { ...user, ws });
         
-        // Отправляем подтверждение
         ws.send(JSON.stringify({
             type: 'auth_success',
             user: { id: user.id, username: user.username }
         }));
         
-        // Отправляем список онлайн пользователей
         broadcastOnlineUsers();
         
         console.log(`✅ Пользователь ${user.username} подключился`);
         
-        // ===== ОБРАБОТКА СООБЩЕНИЙ =====
         ws.on('message', (data) => {
             try {
                 const message = JSON.parse(data);
@@ -333,9 +346,9 @@ wss.on('connection', (ws, req) => {
                     case 'private_message':
                         handlePrivateMessage(ws, message);
                         break;
-                    case 'group_message':               // <-- NEW
-                        handleGroupMessage(ws, message); // <-- NEW
-                        break;                           // <-- NEW
+                    case 'group_message':
+                        handleGroupMessage(ws, message);
+                        break;
                     case 'typing':
                         handleTyping(ws, message);
                         break;
@@ -345,7 +358,6 @@ wss.on('connection', (ws, req) => {
             }
         });
         
-        // ===== ОТКЛЮЧЕНИЕ =====
         ws.on('close', () => {
             console.log(`🔴 Пользователь ${user.username} отключился`);
             
@@ -377,7 +389,6 @@ function handlePrivateMessage(ws, message) {
     
     console.log(`✉️ ${fromUser.username} → ${toUserId}: ${text}`);
     
-    // Создаем сообщение
     const msg = {
         id: uuidv4(),
         from: fromUser.id,
@@ -390,17 +401,14 @@ function handlePrivateMessage(ws, message) {
         }
     };
     
-    // Сохраняем в историю
     messages.push(msg);
     saveMessages();
     
-    // Отправляем ОТПРАВИТЕЛЮ (чтобы увидел свое сообщение)
     ws.send(JSON.stringify({
         type: 'private_message',
         message: msg
     }));
     
-    // Отправляем ПОЛУЧАТЕЛЮ (если онлайн)
     for (let [client, user] of onlineUsers.entries()) {
         if (user.id === toUserId && client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify({
@@ -412,10 +420,10 @@ function handlePrivateMessage(ws, message) {
     }
 }
 
-// ОТПРАВКА СООБЩЕНИЯ В ГРУППУ
+// ===== ОТПРАВКА СООБЩЕНИЯ В ГРУППУ =====
 function handleGroupMessage(ws, message) {
     const fromUser = onlineUsers.get(ws);
-    const { groupId, text } = message;
+    const { groupId, text, tempId } = message;
     
     if (!fromUser || !groupId || !text) return;
     
@@ -430,13 +438,13 @@ function handleGroupMessage(ws, message) {
         from: fromUser.id,
         fromUser: { id: fromUser.id, username: fromUser.username },
         text,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        tempId: tempId
     };
     
     groupMessages.push(msg);
     saveGroupMessages();
     
-    // Отправляем всем участникам группы
     wss.clients.forEach(client => {
         const user = onlineUsers.get(client);
         if (user && group.members.includes(user.id) && client.readyState === WebSocket.OPEN) {
@@ -499,14 +507,13 @@ server.listen(PORT, '0.0.0.0', () => {
     📍 Адрес: http://ваш-сервер:${PORT}
     👥 Пользователей в БД: ${users.length}
     💾 Сообщений в БД: ${messages.length}
-    👥 Групп: ${groups.length} 
+    👥 Групп: ${groups.length}
     
     ✅ Сервер готов к работе!
     ====================================
     `);
 });
 
-// Завершение работы
 process.on('SIGINT', () => {
     users.forEach(u => { u.status = 'offline'; });
     saveUsers();
