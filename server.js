@@ -8,13 +8,22 @@ const bcrypt = require('bcryptjs');
 // ========== ФАЙЛЫ ==========
 const USERS_FILE = path.join(__dirname, 'users.json');
 const MESSAGES_FILE = path.join(__dirname, 'messages.json');
+//  файлы для групп
+const GROUPS_FILE = path.join(__dirname, 'groups.json');
+const GROUP_MESSAGES_FILE = path.join(__dirname, 'group-messages.json');
 
 // Инициализация файлов
 if (!fs.existsSync(USERS_FILE)) fs.writeFileSync(USERS_FILE, '[]');
 if (!fs.existsSync(MESSAGES_FILE)) fs.writeFileSync(MESSAGES_FILE, '[]');
+// <-- NEW: инициализация файлов групп
+if (!fs.existsSync(GROUPS_FILE)) fs.writeFileSync(GROUPS_FILE, '[]');
+if (!fs.existsSync(GROUP_MESSAGES_FILE)) fs.writeFileSync(GROUP_MESSAGES_FILE, '[]');
 
 let users = JSON.parse(fs.readFileSync(USERS_FILE));
 let messages = JSON.parse(fs.readFileSync(MESSAGES_FILE));
+//  загрузка групп
+let groups = JSON.parse(fs.readFileSync(GROUPS_FILE));
+let groupMessages = JSON.parse(fs.readFileSync(GROUP_MESSAGES_FILE));
 
 function saveUsers() {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
@@ -22,6 +31,15 @@ function saveUsers() {
 
 function saveMessages() {
     fs.writeFileSync(MESSAGES_FILE, JSON.stringify(messages, null, 2));
+}
+
+//  функции сохранения групп
+function saveGroups() {
+    fs.writeFileSync(GROUPS_FILE, JSON.stringify(groups, null, 2));
+}
+
+function saveGroupMessages() {
+    fs.writeFileSync(GROUP_MESSAGES_FILE, JSON.stringify(groupMessages, null, 2));
 }
 
 // ========== HTTP СЕРВЕР ==========
@@ -38,6 +56,13 @@ const server = http.createServer((req, res) => {
     else if (url === '/api/login' && req.method === 'POST') handleLogin(req, res);
     else if (url === '/api/users' && req.method === 'GET') handleGetUsers(req, res);
     else if (url.startsWith('/api/messages/') && req.method === 'GET') handleGetMessages(req, res);
+    
+    //  API для групп
+    else if (url === '/api/groups' && req.method === 'POST') handleCreateGroup(req, res);
+    else if (url === '/api/groups' && req.method === 'GET') handleGetUserGroups(req, res);
+    else if (url.startsWith('/api/groups/') && req.method === 'POST') handleAddToGroup(req, res);
+    else if (url.startsWith('/api/group-messages/') && req.method === 'GET') handleGetGroupMessages(req, res);
+    
     else {
         res.writeHead(404);
         res.end('Not found');
@@ -160,6 +185,92 @@ function handleGetMessages(req, res) {
     res.end(JSON.stringify(chatMessages));
 }
 
+//  СОЗДАНИЕ ГРУППЫ
+function handleCreateGroup(req, res) {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+        try {
+            const { name, creatorId, members } = JSON.parse(body);
+            
+            const group = {
+                id: uuidv4(),
+                name: name,
+                creator: creatorId,
+                members: [creatorId, ...(members || [])],
+                createdAt: new Date().toISOString(),
+                avatar: '👥'
+            };
+            
+            groups.push(group);
+            saveGroups();
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, group }));
+        } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Ошибка создания группы' }));
+        }
+    });
+}
+
+//  ПОЛУЧИТЬ ГРУППЫ ПОЛЬЗОВАТЕЛЯ
+function handleGetUserGroups(req, res) {
+    const userId = req.url.split('?userId=')[1];
+    if (!userId) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'userId required' }));
+        return;
+    }
+    
+    const userGroups = groups.filter(group => 
+        group.members.includes(userId)
+    );
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(userGroups));
+}
+
+//  ДОБАВИТЬ УЧАСТНИКА В ГРУППУ
+function handleAddToGroup(req, res) {
+    const parts = req.url.split('/');
+    const groupId = parts[3];
+    let body = '';
+    
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+        try {
+            const { userId } = JSON.parse(body);
+            const group = groups.find(g => g.id === groupId);
+            
+            if (!group) {
+                res.writeHead(404);
+                res.end(JSON.stringify({ error: 'Group not found' }));
+                return;
+            }
+            
+            if (!group.members.includes(userId)) {
+                group.members.push(userId);
+                saveGroups();
+            }
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: true, group }));
+        } catch (e) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ error: 'Failed to add member' }));
+        }
+    });
+}
+
+// ПОЛУЧИТЬ СООБЩЕНИЯ ГРУППЫ
+function handleGetGroupMessages(req, res) {
+    const groupId = req.url.split('/')[3];
+    const chatMessages = groupMessages.filter(m => m.groupId === groupId);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(chatMessages));
+}
+
 // ========== WEB-SOCKET ==========
 const wss = new WebSocket.Server({ server });
 const onlineUsers = new Map();
@@ -222,6 +333,9 @@ wss.on('connection', (ws, req) => {
                     case 'private_message':
                         handlePrivateMessage(ws, message);
                         break;
+                    case 'group_message':               // <-- NEW
+                        handleGroupMessage(ws, message); // <-- NEW
+                        break;                           // <-- NEW
                     case 'typing':
                         handleTyping(ws, message);
                         break;
@@ -298,6 +412,42 @@ function handlePrivateMessage(ws, message) {
     }
 }
 
+// ОТПРАВКА СООБЩЕНИЯ В ГРУППУ
+function handleGroupMessage(ws, message) {
+    const fromUser = onlineUsers.get(ws);
+    const { groupId, text } = message;
+    
+    if (!fromUser || !groupId || !text) return;
+    
+    const group = groups.find(g => g.id === groupId);
+    if (!group || !group.members.includes(fromUser.id)) return;
+    
+    console.log(`👥 ${fromUser.username} → группа ${group.name}: ${text}`);
+    
+    const msg = {
+        id: uuidv4(),
+        groupId,
+        from: fromUser.id,
+        fromUser: { id: fromUser.id, username: fromUser.username },
+        text,
+        timestamp: new Date().toISOString()
+    };
+    
+    groupMessages.push(msg);
+    saveGroupMessages();
+    
+    // Отправляем всем участникам группы
+    wss.clients.forEach(client => {
+        const user = onlineUsers.get(client);
+        if (user && group.members.includes(user.id) && client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({
+                type: 'group_message',
+                message: msg
+            }));
+        }
+    });
+}
+
 // ===== ПЕЧАТАЕТ... =====
 function handleTyping(ws, message) {
     const fromUser = onlineUsers.get(ws);
@@ -349,6 +499,7 @@ server.listen(PORT, '0.0.0.0', () => {
     📍 Адрес: http://ваш-сервер:${PORT}
     👥 Пользователей в БД: ${users.length}
     💾 Сообщений в БД: ${messages.length}
+    👥 Групп: ${groups.length} 
     
     ✅ Сервер готов к работе!
     ====================================

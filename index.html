@@ -82,6 +82,31 @@
             color: #999;
         }
         
+        /*  вкладки для переключения между личными чатами и группами */
+        .chat-tabs {
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--active-bg);
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
         .search-container {
             padding: 15px;
             border-bottom: 1px solid #eee;
@@ -102,7 +127,7 @@
             padding: 10px;
         }
         
-        .user-item {
+        .user-item, .group-item {  /* добавили group-item */
             padding: 12px 15px;
             display: flex;
             align-items: center;
@@ -113,11 +138,11 @@
             transition: background 0.2s;
         }
         
-        .user-item:hover {
+        .user-item:hover, .group-item:hover {  
             background: #f5f5f5;
         }
         
-        .user-item.active {
+        .user-item.active, .group-item.active {  
             background: #e3f2fd;
         }
         
@@ -131,6 +156,19 @@
             align-items: center;
             justify-content: center;
             font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .group-avatar-small {  
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #4CAF50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
             flex-shrink: 0;
         }
         
@@ -153,6 +191,11 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        
+        .group-members-count {  
+            font-size: 11px;
+            color: #666;
         }
         
         .unread-count {
@@ -182,6 +225,29 @@
             font-weight: 500;
         }
         
+        /*  кнопка создания группы */
+        .create-group-btn-container {
+            margin-top: 10px;
+            padding: 0 20px 20px 20px;
+        }
+
+        .create-group-btn {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .create-group-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
         /* ========== ОСНОВНАЯ ОБЛАСТЬ ЧАТА ========== */
         .chat-area {
             flex: 1;
@@ -202,7 +268,8 @@
             flex-shrink: 0;
         }
         
-        .chat-header .user-avatar-small {
+        .chat-header .user-avatar-small,
+        .chat-header .group-avatar-small {  
             width: 45px;
             height: 45px;
         }
@@ -219,6 +286,11 @@
         .chat-header-info .status {
             font-size: 13px;
             color: #666;
+        }
+        
+        .chat-header-info .member-count {  
+            font-size: 12px;
+            color: #888;
         }
         
         .messages-container {
@@ -248,6 +320,13 @@
         
         .message.incoming {
             align-self: flex-start;
+        }
+        
+        .message-sender {  /*  для групповых сообщений */
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 3px;
+            color: #667eea;
         }
         
         .message-content {
@@ -391,19 +470,20 @@
             border-top-color: var(--border-color) !important;
         }
 
-        .user-item {
+        .user-item, .group-item {
             color: var(--text-primary) !important;
         }
 
-        .user-item:hover {
+        .user-item:hover, .group-item:hover {
             background: var(--hover-bg) !important;
         }
 
-        .user-item.active {
+        .user-item.active, .group-item.active {
             background: var(--active-bg) !important;
         }
 
-        .user-details-small .last-seen {
+        .user-details-small .last-seen,
+        .group-members-count {
             color: var(--text-secondary) !important;
         }
 
@@ -520,6 +600,110 @@
 
         [data-theme="dark"] .theme-switch-sidebar .theme-icon.moon {
             opacity: 1;
+        }
+
+        /*  стили для модального окна создания группы */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            outline: none;
+        }
+
+        .modal input:focus {
+            border-color: #667eea;
+        }
+
+        .modal-section {
+            margin: 20px 0;
+        }
+
+        .modal-section h4 {
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .members-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .member-item:hover {
+            background: var(--hover-bg);
+        }
+
+        .member-item input {
+            margin-right: 10px;
+            width: auto;
+            margin-bottom: 0;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        #saveGroupBtn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
         /* Адаптация для мобильных */
@@ -659,14 +843,24 @@
                     </button>
                 </div>
             </div>
+            <!--  кнопка создания группы -->
+            <div class="create-group-btn-container">
+                <button id="createGroupBtn" class="create-group-btn">➕ Создать группу</button>
+            </div>
+        </div>
+        
+        <!-- <-- вкладки Личные / Группы -->
+        <div class="chat-tabs">
+            <button class="tab-btn active" data-tab="private">💬 Личные</button>
+            <button class="tab-btn" data-tab="groups">👥 Группы</button>
         </div>
         
         <div class="search-container">
-            <input type="text" id="searchUsers" placeholder="🔍 Поиск пользователей...">
+            <input type="text" id="searchUsers" placeholder="🔍 Поиск...">
         </div>
         
         <div class="users-list" id="usersList">
-            <div class="loading">Загрузка пользователей...</div>
+            <div class="loading">Загрузка...</div>
         </div>
         
         <div class="logout-btn">
@@ -678,9 +872,11 @@
     <div class="chat-area">
         <div class="chat-header" id="chatHeader" style="display: none;">
             <div class="user-avatar-small" id="chatUserAvatar">U</div>
+            <div class="group-avatar-small" id="chatGroupAvatar" style="display: none;">👥</div>  <!-- <-- NEW -->
             <div class="chat-header-info">
                 <h3 id="chatUserName">Выберите пользователя</h3>
                 <div class="status" id="chatUserStatus">загрузка...</div>
+                <div class="member-count" id="chatMemberCount"></div>  <!-- <-- NEW -->
             </div>
         </div>
         
@@ -697,6 +893,24 @@
     </div>
 </div>
 
+<!-- <-- модальное окно создания группы -->
+<div id="createGroupModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>➕ Создать группу</h3>
+        <input type="text" id="groupNameInput" placeholder="Название группы">
+        
+        <div class="modal-section">
+            <h4>Выберите участников:</h4>
+            <div id="groupMembersList" class="members-list"></div>
+        </div>
+        
+        <div class="modal-buttons">
+            <button id="saveGroupBtn" class="modal-btn">Создать</button>
+            <button id="cancelGroupBtn" class="modal-btn" style="background: #f0f2f5; color: #333;">Отмена</button>
+        </div>
+    </div>
+</div>
+
 <script>
     class Messenger {
         constructor() {
@@ -704,8 +918,12 @@
             this.username = localStorage.getItem('username');
             this.ws = null;
             this.currentChat = null;
+            this.currentGroup = null;  // <-- NEW
+            this.currentTab = 'private';  // <-- NEW
             this.users = [];
+            this.groups = [];  // <-- NEW
             this.messages = new Map();
+            this.groupMessages = new Map();  // <-- NEW
             this.unread = new Map();
             
             if (!this.userId || !this.username) {
@@ -720,10 +938,12 @@
             this.initTheme();
             this.bindEvents();
             await this.loadUsers();
+            await this.loadGroups();  // <-- NEW
             this.connectWebSocket();
             this.updateUI();
             
             setInterval(() => this.loadUsers(), 30000);
+            setInterval(() => this.loadGroups(), 30000);  // <-- NEW
         }
         
         initTheme() {
@@ -748,7 +968,7 @@
                 this.style.height = this.scrollHeight + 'px';
             };
             
-            document.getElementById('searchUsers').oninput = (e) => this.filterUsers(e.target.value);
+            document.getElementById('searchUsers').oninput = (e) => this.filterItems(e.target.value);  // <-- NEW
             
             document.addEventListener('click', (e) => {
                 const sidebar = document.getElementById('sidebar');
@@ -767,25 +987,54 @@
             if (themeBtn) {
                 themeBtn.addEventListener('click', this.toggleTheme);
             }
+            
+            // <-- NEW: вкладки
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    this.currentTab = e.target.dataset.tab;
+                    this.renderList();
+                });
+            });
+            
+            // <--  создание группы
+            document.getElementById('createGroupBtn').addEventListener('click', () => this.showCreateGroupModal());
+            document.getElementById('saveGroupBtn').addEventListener('click', () => this.createGroup());
+            document.getElementById('cancelGroupBtn').addEventListener('click', () => this.hideCreateGroupModal());
         }
         
-        toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        }
-        
-        // ... остальные методы без изменений ...
-        async loadUsers() {
+        // <--  загрузка групп
+        async loadGroups() {
             try {
-                const response = await fetch('/api/users');
+                const response = await fetch(`/api/groups?userId=${this.userId}`);
                 if (response.ok) {
-                    this.users = await response.json();
-                    this.renderUsersList(document.getElementById('searchUsers').value);
+                    this.groups = await response.json();
+                    if (this.currentTab === 'groups') {
+                        this.renderList();
+                    }
                 }
             } catch (error) {
-                console.error('Ошибка загрузки пользователей:', error);
+                console.error('Ошибка загрузки групп:', error);
+            }
+        }
+        
+        // <-- фильтрация (общая для пользователей и групп)
+        filterItems(searchTerm) {
+            if (this.currentTab === 'private') {
+                this.renderUsersList(searchTerm);
+            } else {
+                this.renderGroupsList(searchTerm);
+            }
+        }
+        
+        // <--  отрисовка списка в зависимости от вкладки
+        renderList() {
+            const searchValue = document.getElementById('searchUsers').value;
+            if (this.currentTab === 'private') {
+                this.renderUsersList(searchValue);
+            } else {
+                this.renderGroupsList(searchValue);
             }
         }
         
@@ -811,7 +1060,7 @@
                 const unreadCount = this.unread.get(user.id) || 0;
                 
                 return `
-                    <div class="user-item ${this.currentChat?.id === user.id ? 'active' : ''}" 
+                    <div class="user-item ${this.currentChat?.id === user.id && this.currentTab === 'private' ? 'active' : ''}" 
                          onclick="messenger.selectUser('${user.id}')">
                         <div class="user-avatar-small">${user.username.charAt(0).toUpperCase()}</div>
                         <div class="user-details-small">
@@ -826,6 +1075,34 @@
             }).join('');
         }
         
+        // <--  отрисовка групп
+        renderGroupsList(filter = '') {
+            const usersList = document.getElementById('usersList');
+            
+            let filteredGroups = this.groups
+                .filter(group => group.name.toLowerCase().includes(filter.toLowerCase()))
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            if (filteredGroups.length === 0) {
+                usersList.innerHTML = '<div class="no-users">Нет групп</div>';
+                return;
+            }
+            
+            usersList.innerHTML = filteredGroups.map(group => {
+                const isActive = this.currentGroup?.id === group.id && this.currentTab === 'groups';
+                return `
+                    <div class="group-item ${isActive ? 'active' : ''}" 
+                         onclick="messenger.selectGroup('${group.id}')">
+                        <div class="group-avatar-small">${group.avatar || '👥'}</div>
+                        <div class="user-details-small">
+                            <h4>${group.name}</h4>
+                            <div class="group-members-count">${group.members.length} участников</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
         filterUsers(searchTerm) {
             this.renderUsersList(searchTerm);
         }
@@ -835,18 +1112,46 @@
             if (!user) return;
             
             this.currentChat = user;
+            this.currentGroup = null;  // <-- NEW
+            this.currentTab = 'private';
             
             document.getElementById('chatHeader').style.display = 'flex';
-            document.getElementById('chatUserName').textContent = user.username;
+            document.getElementById('chatUserAvatar').style.display = 'flex';
+            document.getElementById('chatGroupAvatar').style.display = 'none';
             document.getElementById('chatUserAvatar').textContent = user.username.charAt(0).toUpperCase();
+            document.getElementById('chatUserName').textContent = user.username;
             document.getElementById('chatUserStatus').textContent = user.status === 'online' ? '● онлайн' : '○ не в сети';
             document.getElementById('chatUserStatus').className = `status ${user.status === 'online' ? 'online' : 'offline'}`;
+            document.getElementById('chatMemberCount').textContent = '';
             document.getElementById('inputArea').style.display = 'flex';
             
             this.unread.delete(userId);
             this.renderUsersList(document.getElementById('searchUsers').value);
             this.loadChatHistory(userId);
             
+            document.getElementById('sidebar').classList.remove('active');
+        }
+        
+        // <-- выбор группы
+        selectGroup(groupId) {
+            const group = this.groups.find(g => g.id === groupId);
+            if (!group) return;
+            
+            this.currentGroup = group;
+            this.currentChat = null;
+            this.currentTab = 'groups';
+            
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('chatUserAvatar').style.display = 'none';
+            document.getElementById('chatGroupAvatar').style.display = 'flex';
+            document.getElementById('chatGroupAvatar').textContent = group.avatar || '👥';
+            document.getElementById('chatUserName').textContent = group.name;
+            document.getElementById('chatUserStatus').textContent = 'группа';
+            document.getElementById('chatMemberCount').textContent = `${group.members.length} участников`;
+            document.getElementById('inputArea').style.display = 'flex';
+            
+            this.renderGroupsList(document.getElementById('searchUsers').value);
+            this.loadGroupHistory(groupId);  // <-- NEW
             document.getElementById('sidebar').classList.remove('active');
         }
         
@@ -866,8 +1171,25 @@
             }
         }
         
+        // <--  загрузка истории группы
+        async loadGroupHistory(groupId) {
+            try {
+                const response = await fetch(`/api/group-messages/${groupId}`);
+                if (response.ok) {
+                    const messages = await response.json();
+                    const sortedMessages = messages.sort((a, b) => 
+                        new Date(a.timestamp) - new Date(b.timestamp)
+                    );
+                    this.groupMessages.set(groupId, sortedMessages);
+                    this.renderGroupMessages(groupId);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки истории группы:', error);
+            }
+        }
+        
         renderMessages(userId) {
-            if (this.currentChat?.id !== userId) return;
+            if (!this.currentChat || this.currentChat.id !== userId) return;
             
             const container = document.getElementById('messagesContainer');
             const messages = this.messages.get(userId) || [];
@@ -887,6 +1209,39 @@
                 
                 html += `
                     <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
+                        <div class="message-content">${this.escapeHtml(msg.text)}</div>
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+            this.scrollToBottom();
+        }
+        
+        // <--  отрисовка сообщений группы
+        renderGroupMessages(groupId) {
+            if (!this.currentGroup || this.currentGroup.id !== groupId) return;
+            
+            const container = document.getElementById('messagesContainer');
+            const messages = this.groupMessages.get(groupId) || [];
+            
+            if (messages.length === 0) {
+                container.innerHTML = '<div class="no-chat-selected">Нет сообщений в группе. Напишите что-нибудь!</div>';
+                return;
+            }
+            
+            let html = '';
+            messages.forEach(msg => {
+                const isOutgoing = msg.from === this.userId;
+                const time = new Date(msg.timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                html += `
+                    <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
+                        ${!isOutgoing ? `<div class="message-sender">${this.escapeHtml(msg.fromUser.username)}</div>` : ''}
                         <div class="message-content">${this.escapeHtml(msg.text)}</div>
                         <div class="message-time">${time}</div>
                     </div>
@@ -924,6 +1279,9 @@
                     switch (data.type) {
                         case 'private_message':
                             this.handleIncomingMessage(data.message);
+                            break;
+                        case 'group_message':  // <-- NEW
+                            this.handleIncomingGroupMessage(data.message);
                             break;
                         case 'online_users':
                             this.updateOnlineUsers(data.users);
@@ -966,45 +1324,185 @@
                 } else {
                     const count = this.unread.get(fromId) || 0;
                     this.unread.set(fromId, count + 1);
-                    this.renderUsersList(document.getElementById('searchUsers').value);
+                    if (this.currentTab === 'private') {
+                        this.renderUsersList(document.getElementById('searchUsers').value);
+                    }
                 }
             }
         }
         
+        // обработка входящих групповых сообщений
+        handleIncomingGroupMessage(msg) {
+            const groupId = msg.groupId;
+            
+            if (!this.groupMessages.has(groupId)) {
+                this.groupMessages.set(groupId, []);
+            }
+            
+            const chatMessages = this.groupMessages.get(groupId);
+            const exists = chatMessages.some(m => m.id === msg.id);
+            
+            if (!exists) {
+                chatMessages.push(msg);
+                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                if (this.currentGroup?.id === groupId) {
+                    this.renderGroupMessages(groupId);
+                }
+                // Обновляем список групп, если нужно показать новое сообщение
+                this.loadGroups();
+            }
+        }
+        
         sendMessage() {
-            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
             
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             if (!text) return;
             
-            const tempId = 'temp_' + Date.now();
-            const tempMessage = {
-                id: tempId,
-                from: this.userId,
-                to: this.currentChat.id,
-                text: text,
-                timestamp: new Date().toISOString()
-            };
-            
-            if (!this.messages.has(this.currentChat.id)) {
-                this.messages.set(this.currentChat.id, []);
+            if (this.currentChat) {
+                // Личное сообщение
+                const tempId = 'temp_' + Date.now();
+                const tempMessage = {
+                    id: tempId,
+                    from: this.userId,
+                    to: this.currentChat.id,
+                    text: text,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (!this.messages.has(this.currentChat.id)) {
+                    this.messages.set(this.currentChat.id, []);
+                }
+                
+                const chatMessages = this.messages.get(this.currentChat.id);
+                chatMessages.push(tempMessage);
+                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                this.renderMessages(this.currentChat.id);
+                
+                this.ws.send(JSON.stringify({
+                    type: 'private_message',
+                    to: this.currentChat.id,
+                    text: text
+                }));
+                
+            } else if (this.currentGroup) {
+                // Сообщение в группу
+                const tempId = 'temp_' + Date.now();
+                const tempMessage = {
+                    id: tempId,
+                    groupId: this.currentGroup.id,
+                    from: this.userId,
+                    fromUser: { id: this.userId, username: this.username },
+                    text: text,
+                    timestamp: new Date().toISOString()
+                };
+                
+                if (!this.groupMessages.has(this.currentGroup.id)) {
+                    this.groupMessages.set(this.currentGroup.id, []);
+                }
+                
+                const chatMessages = this.groupMessages.get(this.currentGroup.id);
+                chatMessages.push(tempMessage);
+                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                
+                this.renderGroupMessages(this.currentGroup.id);
+                
+                this.ws.send(JSON.stringify({
+                    type: 'group_message',
+                    groupId: this.currentGroup.id,
+                    text: text
+                }));
             }
-            
-            const chatMessages = this.messages.get(this.currentChat.id);
-            chatMessages.push(tempMessage);
-            chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            this.renderMessages(this.currentChat.id);
-            
-            this.ws.send(JSON.stringify({
-                type: 'private_message',
-                to: this.currentChat.id,
-                text: text
-            }));
             
             input.value = '';
             input.style.height = 'auto';
+        }
+        
+        // модальное окно создания группы
+        showCreateGroupModal() {
+            const modal = document.getElementById('createGroupModal');
+            const membersList = document.getElementById('groupMembersList');
+            
+            membersList.innerHTML = this.users
+                .filter(u => u.id !== this.userId)
+                .map(u => `
+                    <label class="member-item">
+                        <input type="checkbox" value="${u.id}">
+                        ${u.username}
+                    </label>
+                `).join('');
+            
+            modal.style.display = 'flex';
+        }
+        
+        hideCreateGroupModal() {
+            document.getElementById('createGroupModal').style.display = 'none';
+            document.getElementById('groupNameInput').value = '';
+        }
+        
+        async createGroup() {
+            const name = document.getElementById('groupNameInput').value.trim();
+            if (!name) {
+                alert('Введите название группы');
+                return;
+            }
+            
+            const selectedMembers = Array.from(document.querySelectorAll('#groupMembersList input:checked'))
+                .map(cb => cb.value);
+            
+            if (selectedMembers.length === 0) {
+                alert('Выберите хотя бы одного участника');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/groups', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        creatorId: this.userId,
+                        members: selectedMembers
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.groups.push(data.group);
+                    this.hideCreateGroupModal();
+                    this.renderGroupsList();
+                    
+                    // Переключаемся на вкладку групп
+                    document.querySelector('[data-tab="groups"]').click();
+                }
+            } catch (error) {
+                console.error('Ошибка создания группы:', error);
+                alert('Ошибка создания группы');
+            }
+        }
+        
+        toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        async loadUsers() {
+            try {
+                const response = await fetch('/api/users');
+                if (response.ok) {
+                    this.users = await response.json();
+                    if (this.currentTab === 'private') {
+                        this.renderUsersList(document.getElementById('searchUsers').value);
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+            }
         }
         
         updateOnlineUsers(onlineUsers) {
@@ -1014,7 +1512,9 @@
                 if (onlineUser) user.lastSeen = onlineUser.lastSeen;
             });
             
-            this.renderUsersList(document.getElementById('searchUsers').value);
+            if (this.currentTab === 'private') {
+                this.renderUsersList(document.getElementById('searchUsers').value);
+            }
             
             if (this.currentChat) {
                 const onlineUser = onlineUsers.find(u => u.id === this.currentChat.id);
