@@ -198,7 +198,7 @@ function handleCreateGroup(req, res) {
             groups.push(group);
             saveGroups();
             
-            // Оповещаем всех участников о новой группе
+            // Оповещаем всех участников, КРОМЕ создателя
             const groupCreatedMessage = JSON.stringify({
                 type: 'group_created',
                 group: group
@@ -206,7 +206,7 @@ function handleCreateGroup(req, res) {
             
             wss.clients.forEach(client => {
                 const user = onlineUsers.get(client);
-                if (user && group.members.includes(user.id) && client.readyState === WebSocket.OPEN) {
+                if (user && group.members.includes(user.id) && user.id !== creatorId && client.readyState === WebSocket.OPEN) {
                     client.send(groupCreatedMessage);
                 }
             });
@@ -229,9 +229,11 @@ function handleGetUserGroups(req, res) {
         return;
     }
     
+    console.log('📋 Запрос групп для userId:', userId);
     const userGroups = groups.filter(group => 
         group.members.includes(userId)
     );
+    console.log('📤 Отправляем группы:', userGroups.length);
     
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(userGroups));
@@ -259,7 +261,6 @@ function handleAddToGroup(req, res) {
                 group.members.push(userId);
                 saveGroups();
                 
-                // Оповещаем нового участника
                 const groupUpdateMessage = JSON.stringify({
                     type: 'group_updated',
                     group: group

@@ -988,7 +988,10 @@
             try {
                 const response = await fetch(`/api/groups?userId=${this.userId}`);
                 if (response.ok) {
-                    this.groups = await response.json();
+                    const loadedGroups = await response.json();
+                    console.log('📥 Загружены группы:', loadedGroups);
+                    this.groups = loadedGroups;
+                    
                     if (this.currentGroup) {
                         const stillExists = this.groups.some(g => g.id === this.currentGroup.id);
                         if (!stillExists) {
@@ -997,9 +1000,12 @@
                             document.getElementById('inputArea').style.display = 'none';
                         }
                     }
+                    
                     if (this.currentTab === 'groups') {
                         this.renderList();
                     }
+                } else {
+                    console.error('Ошибка загрузки групп, статус:', response.status);
                 }
             } catch (error) {
                 console.error('Ошибка загрузки групп:', error);
@@ -1261,9 +1267,16 @@
                             this.handleIncomingGroupMessage(data.message);
                             break;
                         case 'group_created':
-                            this.groups.push(data.group);
-                            if (this.currentTab === 'groups') {
-                                this.renderGroupsList();
+                            // Получаем группу ТОЛЬКО если это не создатель
+                            const isCreator = data.group.creator === this.userId;
+                            if (!isCreator) {
+                                const exists = this.groups.some(g => g.id === data.group.id);
+                                if (!exists) {
+                                    this.groups.push(data.group);
+                                    if (this.currentTab === 'groups') {
+                                        this.renderGroupsList();
+                                    }
+                                }
                             }
                             break;
                         case 'online_users':
@@ -1459,6 +1472,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     
+                    // Создатель добавляет группу себе сразу
                     this.groups.push(data.group);
                     
                     this.hideCreateGroupModal();
