@@ -190,6 +190,7 @@
             background: #f8f9fa;
             height: 100vh;
             overflow: hidden;
+            position: relative; /* Для позиционирования welcome-screen */
         }
         
         .chat-header {
@@ -219,6 +220,65 @@
         .chat-header-info .status {
             font-size: 13px;
             color: #666;
+        }
+        
+        /* ========== ПРИВЕТСТВЕННЫЙ ЭКРАН ========== */
+        .welcome-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--chat-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .welcome-screen.hidden {
+            opacity: 0;
+            display: none;
+        }
+
+        .welcome-content {
+            text-align: center;
+            max-width: 100%;
+            padding: 10px;
+        }
+
+        .welcome-ascii {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            color: var(--text-primary);
+            text-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
+            white-space: pre;
+            overflow-x: auto;
+            max-width: 100%;
+            animation: gentleGlow 4s ease-in-out infinite;
+            background: transparent;
+            padding: 10px;
+            display: inline-block;
+        }
+
+        @keyframes gentleGlow {
+            0%, 100% { text-shadow: 0 0 10px rgba(102, 126, 234, 0.3); }
+            50% { text-shadow: 0 0 20px rgba(102, 126, 234, 0.6); }
+        }
+
+        .welcome-text {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-top: 20px;
+            font-style: italic;
+            border-top: 1px solid var(--border-color);
+            padding-top: 15px;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
         }
         
         .messages-container {
@@ -381,7 +441,7 @@
             border-right-color: var(--border-color) !important;
         }
 
-        .chat-area, .messages-container {
+        .chat-area, .messages-container, .welcome-screen {
             background: var(--chat-bg) !important;
         }
 
@@ -597,6 +657,22 @@
                 width: 100%;
                 justify-content: flex-end;
             }
+            
+            .welcome-ascii {
+                font-size: 5px;
+                line-height: 1.1;
+            }
+            
+            .welcome-text {
+                font-size: 14px;
+                margin-top: 10px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .welcome-ascii {
+                font-size: 4px;
+            }
         }
         
         .menu-toggle {
@@ -684,6 +760,32 @@
             </div>
         </div>
         
+        <!-- ========== ПРИВЕТСТВЕННЫЙ ЭКРАН ========== -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-content">
+                <pre class="welcome-ascii">
+_______  _______  _______  _______  _______  _        _______  _______  _______ 
+(       )(  ____ \(  ____ \(  ____ \(  ____ \( (    /|(  ____ \(  ____ \(  ____ )
+| () () || (    \/| (    \/| (    \/| (    \/|  \  ( || (    \/| (    \/| (    )|
+| || || || (__    | (_____ | (_____ | (__    |   \ | || |      | (__    | (____)|
+| |(_)| ||  __)   (_____  )(_____  )|  __)   | (\ \) || | ____ |  __)   |     __)
+| |   | || (            ) |      ) || (      | | \   || | \_  )| (      | (\ (   
+| )   ( || (____/\/\____) |/\____) || (____/\| )  \  || (___) || (____/\| ) \ \__
+|/     \|(_______/\_______)\_______)(_______/|/    )_)(_______)(_______/|/   \__/
+                                                                                 
+ _______  _______  _______                                                       
+(  ____ )(  ____ )(  ___  )                                                      
+| (    )|| (    )|| (   ) |                                                      
+| (____)|| (____)|| |   | |                                                      
+|  _____)|     __)| |   | |                                                      
+| (      | (\ (   | |   | |                                                      
+| )      | ) \ \__| (___) |                                                      
+|/       |/   \__/(_______)                                                      
+                </pre>
+                <p class="welcome-text">сделано с ❤️ для друзей и хорошего общения</p>
+            </div>
+        </div>
+        
         <div class="messages-container" id="messagesContainer"></div>
         
         <div class="input-area" id="inputArea" style="display: none;">
@@ -704,8 +806,11 @@
             this.username = localStorage.getItem('username');
             this.ws = null;
             this.currentChat = null;
+            this.currentGroup = null; // Добавил для совместимости с будущими группами
             this.users = [];
+            this.groups = []; // Добавил для совместимости
             this.messages = new Map();
+            this.groupMessages = new Map(); // Добавил для совместимости
             this.unread = new Map();
             
             if (!this.userId || !this.username) {
@@ -720,10 +825,31 @@
             this.initTheme();
             this.bindEvents();
             await this.loadUsers();
+            await this.loadGroups?.(); // безопасный вызов, если метод есть
             this.connectWebSocket();
             this.updateUI();
             
+            // ===== ПОКАЗЫВАЕМ ПРИВЕТСТВИЕ =====
+            this.showWelcomeScreen();
+            
             setInterval(() => this.loadUsers(), 30000);
+            if (this.loadGroups) setInterval(() => this.loadGroups(), 30000);
+        }
+        
+        // ========== ПРИВЕТСТВЕННЫЙ ЭКРАН ==========
+        showWelcomeScreen() {
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const chatHeader = document.getElementById('chatHeader');
+            const inputArea = document.getElementById('inputArea');
+            
+            if (welcomeScreen) welcomeScreen.classList.remove('hidden');
+            if (chatHeader) chatHeader.style.display = 'none';
+            if (inputArea) inputArea.style.display = 'none';
+        }
+
+        hideWelcomeScreen() {
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            if (welcomeScreen) welcomeScreen.classList.add('hidden');
         }
         
         initTheme() {
@@ -776,7 +902,6 @@
             localStorage.setItem('theme', newTheme);
         }
         
-        // ... остальные методы без изменений ...
         async loadUsers() {
             try {
                 const response = await fetch('/api/users');
@@ -834,6 +959,9 @@
             const user = this.users.find(u => u.id === userId);
             if (!user) return;
             
+            // ===== ПРЯЧЕМ ПРИВЕТСТВИЕ =====
+            this.hideWelcomeScreen();
+            
             this.currentChat = user;
             
             document.getElementById('chatHeader').style.display = 'flex';
@@ -848,6 +976,12 @@
             this.loadChatHistory(userId);
             
             document.getElementById('sidebar').classList.remove('active');
+        }
+        
+        // Заглушка для будущих групп
+        selectGroup(groupId) {
+            this.hideWelcomeScreen();
+            // здесь будет логика групп
         }
         
         async loadChatHistory(userId) {
