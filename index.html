@@ -895,701 +895,168 @@
 </div>
 
 <script>
-    class Messenger {
-        constructor() {
-            this.userId = localStorage.getItem('userId');
-            this.username = localStorage.getItem('username');
-            this.ws = null;
-            this.currentChat = null;
-            this.currentGroup = null;
-            this.currentTab = 'private';
-            this.users = [];
-            this.groups = [];
-            this.messages = new Map();
-            this.groupMessages = new Map();
-            this.unread = new Map();
-            
-            if (!this.userId || !this.username) {
-                window.location.href = 'login.html';
-                return;
-            }
-            
-            this.init();
-        }
-        
-        async init() {
-            this.initTheme();
-            this.bindEvents();
-            await this.loadUsers();
-            await this.loadGroups();
-            this.connectWebSocket();
-            this.updateUI();
-            
-            setInterval(() => this.loadUsers(), 30000);
-            setInterval(() => this.loadGroups(), 30000);
-        }
-        
-        initTheme() {
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            document.documentElement.setAttribute('data-theme', savedTheme);
-        }
-        
-        bindEvents() {
-            document.getElementById('logoutBtn').onclick = () => this.logout();
-            document.getElementById('sendBtn').onclick = () => this.sendMessage();
-            
-            const input = document.getElementById('messageInput');
-            input.onkeypress = (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    this.sendMessage();
-                }
-            };
-            
-            input.oninput = function() {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            };
-            
-            document.getElementById('searchUsers').oninput = (e) => this.filterItems(e.target.value);
-            
-            document.addEventListener('click', (e) => {
-                const sidebar = document.getElementById('sidebar');
-                const menuBtn = document.getElementById('menuToggle');
-                
-                if (window.innerWidth <= 768 && 
-                    sidebar.classList.contains('active') && 
-                    !sidebar.contains(e.target) && 
-                    !menuBtn.contains(e.target)) {
-                    sidebar.classList.remove('active');
-                }
-            });
-            
-            const themeBtn = document.getElementById('themeToggleBtn');
-            if (themeBtn) {
-                themeBtn.addEventListener('click', this.toggleTheme);
-            }
-            
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    e.target.classList.add('active');
-                    this.currentTab = e.target.dataset.tab;
-                    this.renderList();
-                });
-            });
-            
-            document.getElementById('createGroupBtn').addEventListener('click', () => this.showCreateGroupModal());
-            document.getElementById('saveGroupBtn').addEventListener('click', () => this.createGroup());
-            document.getElementById('cancelGroupBtn').addEventListener('click', () => this.hideCreateGroupModal());
-        }
-        
-        async loadGroups() {
-            try {
-                const response = await fetch(`/api/groups?userId=${this.userId}`);
-                if (response.ok) {
-                    const loadedGroups = await response.json();
-                    console.log('📥 Загружены группы:', loadedGroups);
-                    this.groups = loadedGroups;
-                    
-                    if (this.currentGroup) {
-                        const stillExists = this.groups.some(g => g.id === this.currentGroup.id);
-                        if (!stillExists) {
-                            this.currentGroup = null;
-                            document.getElementById('chatHeader').style.display = 'none';
-                            document.getElementById('inputArea').style.display = 'none';
-                        }
-                    }
-                    
-                    if (this.currentTab === 'groups') {
-                        this.renderList();
-                    }
-                } else {
-                    console.error('Ошибка загрузки групп, статус:', response.status);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки групп:', error);
-            }
-        }
-        
-        filterItems(searchTerm) {
-            if (this.currentTab === 'private') {
-                this.renderUsersList(searchTerm);
-            } else {
-                this.renderGroupsList(searchTerm);
-            }
-        }
-        
-        renderList() {
-            const searchValue = document.getElementById('searchUsers').value;
-            if (this.currentTab === 'private') {
-                this.renderUsersList(searchValue);
-            } else {
-                this.renderGroupsList(searchValue);
-            }
-        }
-        
-        renderUsersList(filter = '') {
-            const usersList = document.getElementById('usersList');
-            
-            let filteredUsers = this.users
-                .filter(user => user.id !== this.userId)
-                .filter(user => user.username.toLowerCase().includes(filter.toLowerCase()))
-                .sort((a, b) => {
-                    if (a.status === 'online' && b.status !== 'online') return -1;
-                    if (a.status !== 'online' && b.status === 'online') return 1;
-                    return new Date(b.lastSeen) - new Date(a.lastSeen);
-                });
-            
-            if (filteredUsers.length === 0) {
-                usersList.innerHTML = '<div class="no-users">Нет пользователей</div>';
-                return;
-            }
-            
-            usersList.innerHTML = filteredUsers.map(user => {
-                const isOnline = user.status === 'online';
-                const unreadCount = this.unread.get(user.id) || 0;
-                
-                return `
-                    <div class="user-item ${this.currentChat?.id === user.id && this.currentTab === 'private' ? 'active' : ''}" 
-                         onclick="messenger.selectUser('${user.id}')">
-                        <div class="user-avatar-small">${user.username.charAt(0).toUpperCase()}</div>
-                        <div class="user-details-small">
-                            <h4>${user.username}</h4>
-                            <div class="last-seen" style="color: ${isOnline ? '#4CAF50' : '#999'}">
-                                ${isOnline ? '● онлайн' : 'был(а) недавно'}
-                            </div>
-                        </div>
-                        ${unreadCount > 0 ? `<div class="unread-count">${unreadCount}</div>` : ''}
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        renderGroupsList(filter = '') {
-            const usersList = document.getElementById('usersList');
-            
-            let filteredGroups = this.groups
-                .filter(group => group.name.toLowerCase().includes(filter.toLowerCase()))
-                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            
-            if (filteredGroups.length === 0) {
-                usersList.innerHTML = '<div class="no-users">Нет групп</div>';
-                return;
-            }
-            
-            usersList.innerHTML = filteredGroups.map(group => {
-                const isActive = this.currentGroup?.id === group.id && this.currentTab === 'groups';
-                return `
-                    <div class="group-item ${isActive ? 'active' : ''}" 
-                         onclick="messenger.selectGroup('${group.id}')">
-                        <div class="group-avatar-small">${group.avatar || '👥'}</div>
-                        <div class="user-details-small">
-                            <h4>${group.name}</h4>
-                            <div class="group-members-count">${group.members.length} участников</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-        
-        selectUser(userId) {
-            const user = this.users.find(u => u.id === userId);
-            if (!user) return;
-            
-            this.currentChat = user;
-            this.currentGroup = null;
-            this.currentTab = 'private';
-            
-            document.getElementById('chatHeader').style.display = 'flex';
-            document.getElementById('chatUserAvatar').style.display = 'flex';
-            document.getElementById('chatGroupAvatar').style.display = 'none';
-            document.getElementById('chatUserAvatar').textContent = user.username.charAt(0).toUpperCase();
-            document.getElementById('chatUserName').textContent = user.username;
-            document.getElementById('chatUserStatus').textContent = user.status === 'online' ? '● онлайн' : '○ не в сети';
-            document.getElementById('chatUserStatus').className = `status ${user.status === 'online' ? 'online' : 'offline'}`;
-            document.getElementById('chatMemberCount').textContent = '';
-            document.getElementById('inputArea').style.display = 'flex';
-            
-            this.unread.delete(userId);
-            this.renderUsersList(document.getElementById('searchUsers').value);
-            this.loadChatHistory(userId);
-            
-            document.getElementById('sidebar').classList.remove('active');
-        }
-        
-        selectGroup(groupId) {
-            const group = this.groups.find(g => g.id === groupId);
-            if (!group) return;
-            
-            this.currentGroup = group;
-            this.currentChat = null;
-            this.currentTab = 'groups';
-            
-            document.getElementById('chatHeader').style.display = 'flex';
-            document.getElementById('chatUserAvatar').style.display = 'none';
-            document.getElementById('chatGroupAvatar').style.display = 'flex';
-            document.getElementById('chatGroupAvatar').textContent = group.avatar || '👥';
-            document.getElementById('chatUserName').textContent = group.name;
-            document.getElementById('chatUserStatus').textContent = 'группа';
-            document.getElementById('chatMemberCount').textContent = `${group.members.length} участников`;
-            document.getElementById('inputArea').style.display = 'flex';
-            
-            this.renderGroupsList(document.getElementById('searchUsers').value);
-            this.loadGroupHistory(groupId);
-            document.getElementById('sidebar').classList.remove('active');
-        }
-        
-        async loadChatHistory(userId) {
-            try {
-                const response = await fetch(`/api/messages/${this.userId}/${userId}`);
-                if (response.ok) {
-                    const messages = await response.json();
-                    const sortedMessages = messages.sort((a, b) => 
-                        new Date(a.timestamp) - new Date(b.timestamp)
-                    );
-                    this.messages.set(userId, sortedMessages);
-                    this.renderMessages(userId);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки истории:', error);
-            }
-        }
-        
-        async loadGroupHistory(groupId) {
-            try {
-                const response = await fetch(`/api/group-messages/${groupId}`);
-                if (response.ok) {
-                    const messages = await response.json();
-                    const sortedMessages = messages.sort((a, b) => 
-                        new Date(a.timestamp) - new Date(b.timestamp)
-                    );
-                    this.groupMessages.set(groupId, sortedMessages);
-                    this.renderGroupMessages(groupId);
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки истории группы:', error);
-            }
-        }
-        
-        renderMessages(userId) {
-            if (!this.currentChat || this.currentChat.id !== userId) return;
-            
-            const container = document.getElementById('messagesContainer');
-            const messages = this.messages.get(userId) || [];
-            
-            if (messages.length === 0) {
-                container.innerHTML = '<div class="no-chat-selected">Нет сообщений. Напишите что-нибудь!</div>';
-                return;
-            }
-            
-            let html = '';
-            messages.forEach(msg => {
-                const isOutgoing = msg.from === this.userId;
-                const time = new Date(msg.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                
-                html += `
-                    <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
-                        <div class="message-content">${this.escapeHtml(msg.text)}</div>
-                        <div class="message-time">${time}</div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            this.scrollToBottom();
-        }
-        
-        renderGroupMessages(groupId) {
-            if (!this.currentGroup || this.currentGroup.id !== groupId) return;
-            
-            const container = document.getElementById('messagesContainer');
-            const messages = this.groupMessages.get(groupId) || [];
-            
-            if (messages.length === 0) {
-                container.innerHTML = '<div class="no-chat-selected">Нет сообщений в группе. Напишите что-нибудь!</div>';
-                return;
-            }
-            
-            let html = '';
-            messages.forEach(msg => {
-                const isOutgoing = msg.from === this.userId;
-                const time = new Date(msg.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                
-                html += `
-                    <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
-                        ${!isOutgoing ? `<div class="message-sender">${this.escapeHtml(msg.fromUser.username)}</div>` : ''}
-                        <div class="message-content">${this.escapeHtml(msg.text)}</div>
-                        <div class="message-time">${time}</div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-            this.scrollToBottom();
-        }
-        
-        scrollToBottom() {
-            setTimeout(() => {
-                const container = document.getElementById('messagesContainer');
-                if (container) {
-                    container.scrollTop = container.scrollHeight;
-                }
-            }, 20);
-        }
-        
-        connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const host = window.location.host;
-            const wsUrl = `${protocol}//${host}/?userId=${this.userId}&username=${this.username}`;
-            
-            this.ws = new WebSocket(wsUrl);
-            
-            this.ws.onopen = () => {
-                console.log('WebSocket подключен');
-            };
-            
-            this.ws.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    
-                    switch (data.type) {
-                        case 'private_message':
-                            this.handleIncomingMessage(data.message);
-                            break;
-                        case 'group_message':
-                            this.handleIncomingGroupMessage(data.message);
-                            break;
-                        case 'group_created':
-                            // Получаем группу ТОЛЬКО если это не создатель
-                            const isCreator = data.group.creator === this.userId;
-                            if (!isCreator) {
-                                const exists = this.groups.some(g => g.id === data.group.id);
-                                if (!exists) {
-                                    this.groups.push(data.group);
-                                    if (this.currentTab === 'groups') {
-                                        this.renderGroupsList();
-                                    }
-                                }
-                            }
-                            break;
-                        case 'online_users':
-                            this.updateOnlineUsers(data.users);
-                            break;
-                        case 'typing':
-                            this.showTypingIndicator(data.from, data.isTyping);
-                            break;
-                    }
-                } catch (error) {
-                    console.error('Ошибка обработки сообщения:', error);
-                }
-            };
-            
-            this.ws.onclose = () => {
-                console.log('WebSocket отключен, переподключение...');
-                setTimeout(() => this.connectWebSocket(), 3000);
-            };
-            
-            this.ws.onerror = (error) => {
-                console.error('WebSocket ошибка:', error);
-            };
-        }
-        
-        handleIncomingMessage(msg) {
-            const fromId = msg.from;
-            
-            if (!this.messages.has(fromId)) {
-                this.messages.set(fromId, []);
-            }
-            
-            const chatMessages = this.messages.get(fromId);
-            const exists = chatMessages.some(m => m.id === msg.id);
-            
-            if (!exists) {
-                chatMessages.push(msg);
-                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                if (this.currentChat?.id === fromId) {
-                    this.renderMessages(fromId);
-                } else {
-                    const count = this.unread.get(fromId) || 0;
-                    this.unread.set(fromId, count + 1);
-                    if (this.currentTab === 'private') {
-                        this.renderUsersList(document.getElementById('searchUsers').value);
-                    }
-                }
-            }
-        }
-        
-        handleIncomingGroupMessage(msg) {
-            const groupId = msg.groupId;
-            
-            if (!this.groupMessages.has(groupId)) {
-                this.groupMessages.set(groupId, []);
-            }
-            
-            const chatMessages = this.groupMessages.get(groupId);
-            
-            const tempIndex = chatMessages.findIndex(m => m.id === msg.tempId);
-            
-            if (tempIndex !== -1) {
-                chatMessages[tempIndex] = msg;
-            } else {
-                const exists = chatMessages.some(m => m.id === msg.id);
-                if (!exists) {
-                    chatMessages.push(msg);
-                }
-            }
-            
-            chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-            
-            if (this.currentGroup?.id === groupId) {
-                this.renderGroupMessages(groupId);
-            }
-            
-            this.loadGroups();
-        }
-        
-        sendMessage() {
-            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-            
-            const input = document.getElementById('messageInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            if (this.currentChat) {
-                const tempId = 'temp_' + Date.now();
-                const tempMessage = {
-                    id: tempId,
-                    from: this.userId,
-                    to: this.currentChat.id,
-                    text: text,
-                    timestamp: new Date().toISOString()
-                };
-                
-                if (!this.messages.has(this.currentChat.id)) {
-                    this.messages.set(this.currentChat.id, []);
-                }
-                
-                const chatMessages = this.messages.get(this.currentChat.id);
-                chatMessages.push(tempMessage);
-                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                this.renderMessages(this.currentChat.id);
-                
-                this.ws.send(JSON.stringify({
-                    type: 'private_message',
-                    to: this.currentChat.id,
-                    text: text
-                }));
-                
-            } else if (this.currentGroup) {
-                const tempId = 'temp_' + Date.now();
-                const tempMessage = {
-                    id: tempId,
-                    groupId: this.currentGroup.id,
-                    from: this.userId,
-                    fromUser: { id: this.userId, username: this.username },
-                    text: text,
-                    timestamp: new Date().toISOString()
-                };
-                
-                if (!this.groupMessages.has(this.currentGroup.id)) {
-                    this.groupMessages.set(this.currentGroup.id, []);
-                }
-                
-                const chatMessages = this.groupMessages.get(this.currentGroup.id);
-                chatMessages.push(tempMessage);
-                chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-                
-                this.renderGroupMessages(this.currentGroup.id);
-                
-                this.ws.send(JSON.stringify({
-                    type: 'group_message',
-                    groupId: this.currentGroup.id,
-                    text: text,
-                    tempId: tempId
-                }));
-            }
-            
-            input.value = '';
-            input.style.height = 'auto';
-        }
-        
-        showCreateGroupModal() {
-            const modal = document.getElementById('createGroupModal');
-            const membersList = document.getElementById('groupMembersList');
-            
-            membersList.innerHTML = this.users
-                .filter(u => u.id !== this.userId)
-                .map(u => `
-                    <label class="member-item">
-                        <input type="checkbox" value="${u.id}">
-                        ${u.username}
-                    </label>
-                `).join('');
-            
-            modal.style.display = 'flex';
-        }
-        
-        hideCreateGroupModal() {
-            document.getElementById('createGroupModal').style.display = 'none';
-            document.getElementById('groupNameInput').value = '';
-        }
-        
-        async createGroup() {
-            const name = document.getElementById('groupNameInput').value.trim();
-            if (!name) {
-                alert('Введите название группы');
-                return;
-            }
-            
-            const selectedMembers = Array.from(document.querySelectorAll('#groupMembersList input:checked'))
-                .map(cb => cb.value);
-            
-            if (selectedMembers.length === 0) {
-                alert('Выберите хотя бы одного участника');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/groups', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        creatorId: this.userId,
-                        members: selectedMembers
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Создатель добавляет группу себе сразу
-                    this.groups.push(data.group);
-                    
-                    this.hideCreateGroupModal();
-                    
-                    if (this.currentTab === 'groups') {
-                        this.renderGroupsList();
-                    }
-                    
-                    document.querySelector('[data-tab="groups"]').click();
-                    
-                    setTimeout(() => {
-                        this.selectGroup(data.group.id);
-                    }, 100);
-                }
-            } catch (error) {
-                console.error('Ошибка создания группы:', error);
-                alert('Ошибка создания группы');
-            }
-        }
-        
-        toggleTheme() {
-            const currentTheme = document.documentElement.getAttribute('data-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-        }
-        
-        async loadUsers() {
-            try {
-                const response = await fetch('/api/users');
-                if (response.ok) {
-                    this.users = await response.json();
-                    if (this.currentTab === 'private') {
-                        this.renderUsersList(document.getElementById('searchUsers').value);
-                    }
-                }
-            } catch (error) {
-                console.error('Ошибка загрузки пользователей:', error);
-            }
-        }
-        
-        updateOnlineUsers(onlineUsers) {
-            this.users.forEach(user => {
-                const onlineUser = onlineUsers.find(u => u.id === user.id);
-                user.status = onlineUser ? 'online' : 'offline';
-                if (onlineUser) user.lastSeen = onlineUser.lastSeen;
-            });
-            
-            if (this.currentTab === 'private') {
-                this.renderUsersList(document.getElementById('searchUsers').value);
-            }
-            
-            if (this.currentChat) {
-                const onlineUser = onlineUsers.find(u => u.id === this.currentChat.id);
-                this.currentChat.status = onlineUser ? 'online' : 'offline';
-                document.getElementById('chatUserStatus').textContent = 
-                    this.currentChat.status === 'online' ? '● онлайн' : '○ не в сети';
-            }
-        }
-        
-        showTypingIndicator(userId, isTyping) {
-            if (this.currentChat?.id !== userId) return;
-            
-            const container = document.getElementById('messagesContainer');
-            let indicator = container.querySelector('.typing-indicator');
-            
-            if (isTyping) {
-                if (!indicator) {
-                    indicator = document.createElement('div');
-                    indicator.className = 'typing-indicator';
-                    container.appendChild(indicator);
-                }
-                indicator.textContent = 'Печатает...';
-                this.scrollToBottom();
-            } else if (indicator) {
-                indicator.remove();
-            }
-        }
-        
-        updateUI() {
-            document.getElementById('userAvatar').textContent = this.username?.charAt(0).toUpperCase() || 'U';
-            document.getElementById('currentUsername').textContent = this.username || 'Пользователь';
-        }
-        
-        logout() {
-            if (this.ws) this.ws.close();
-            localStorage.clear();
-            window.location.href = 'login.html';
-        }
-        
-        escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        window.messenger = new Messenger();
-    });
-
-    window.addEventListener('load', function() {
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-            const messageInput = document.getElementById('messageInput');
-            if (messageInput) {
-                messageInput.addEventListener('focus', function() {
-                    setTimeout(() => {
-                        document.querySelector('.messages-container')?.scrollTo({
-                            top: document.querySelector('.messages-container')?.scrollHeight,
-                            behavior: 'smooth'
-                        });
-                    }, 300);
-                });
-            }
-        }
-    });
+   class Messenger {
+   
+   constructor(){
+   this.userId=localStorage.getItem('userId');
+   this.username=localStorage.getItem('username');
+   this.ws=null;
+   this.currentChat=null;
+   this.users=[];
+   this.groups=[];
+   this.messages=new Map();
+   
+   this.init();
+   }
+   
+   async init(){
+   await this.loadUsers();
+   await this.loadGroups();
+   this.connectWS();
+   }
+   
+   async loadUsers(){
+   const r=await fetch('/api/users');
+   this.users=await r.json();
+   this.renderUsers();
+   }
+   
+   async loadGroups(){
+   const r=await fetch('/api/groups');
+   this.groups=(await r.json()).filter(g=>g.members.includes(this.userId));
+   this.renderGroups();
+   }
+   
+   renderUsers(){
+   const list=document.getElementById('usersList');
+   list.innerHTML='';
+   
+   this.groups.forEach(g=>{
+   const div=document.createElement('div');
+   div.className='user-item';
+   div.textContent='👥 '+g.name;
+   div.onclick=()=>this.selectGroup(g);
+   list.appendChild(div);
+   });
+   
+   this.users.forEach(u=>{
+   if(u.id===this.userId) return;
+   
+   const div=document.createElement('div');
+   div.className='user-item';
+   div.textContent=u.username;
+   div.onclick=()=>this.selectUser(u);
+   list.appendChild(div);
+   });
+   }
+   
+   renderGroups(){ this.renderUsers(); }
+   
+   selectUser(user){
+   this.currentChat=user;
+   this.loadHistory(user.id);
+   }
+   
+   selectGroup(group){
+   this.currentChat={...group,isGroup:true};
+   this.loadGroupHistory(group.id);
+   }
+   
+   async loadHistory(id){
+   const r=await fetch(`/api/messages/${this.userId}/${id}`);
+   this.messages.set(id,await r.json());
+   this.renderMessages(id);
+   }
+   
+   async loadGroupHistory(id){
+   const r=await fetch(`/api/groupMessages/${id}`);
+   this.messages.set(id,await r.json());
+   this.renderMessages(id);
+   }
+   
+   renderMessages(id){
+   const cont=document.getElementById('messagesContainer');
+   const msgs=this.messages.get(id)||[];
+   
+   cont.innerHTML=msgs.map(m=>{
+   const me=m.from===this.userId;
+   return `<div>${me?'Я':'Он'}: ${m.text}</div>`;
+   }).join('');
+   }
+   
+   connectWS(){
+   this.ws=new WebSocket(`ws://${location.host}?userId=${this.userId}&username=${this.username}`);
+   
+   this.ws.onmessage=e=>{
+   const data=JSON.parse(e.data);
+   
+   if(data.type==='private_message') this.handleIncoming(data.message);
+   if(data.type==='group_message') this.handleGroupIncoming(data.message);
+   };
+   }
+   
+   handleIncoming(msg){
+   if(!this.messages.has(msg.from)) this.messages.set(msg.from,[]);
+   this.messages.get(msg.from).push(msg);
+   if(this.currentChat?.id===msg.from) this.renderMessages(msg.from);
+   }
+   
+   handleGroupIncoming(msg){
+   if(!this.messages.has(msg.groupId)) this.messages.set(msg.groupId,[]);
+   this.messages.get(msg.groupId).push(msg);
+   if(this.currentChat?.id===msg.groupId) this.renderMessages(msg.groupId);
+   }
+   
+   sendMessage(){
+   const input=document.getElementById('messageInput');
+   const text=input.value;
+   
+   if(this.currentChat?.isGroup){
+   
+   this.ws.send(JSON.stringify({
+   type:'group_message',
+   groupId:this.currentChat.id,
+   text
+   }));
+   
+   }else{
+   
+   this.ws.send(JSON.stringify({
+   type:'private_message',
+   to:this.currentChat.id,
+   text
+   }));
+   
+   }
+   
+   input.value='';
+   }
+   
+   async createGroup(){
+   
+   const name=prompt('Название группы');
+   if(!name) return;
+   
+   const members=[this.userId];
+   
+   this.users.forEach(u=>{
+   if(confirm(`Добавить ${u.username}?`)) members.push(u.id);
+   });
+   
+   await fetch('/api/groups',{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({name,members})
+   });
+   
+   await this.loadGroups();
+   }
+   
+   }
+   
+   window.addEventListener('DOMContentLoaded',()=>{
+   window.messenger=new Messenger();
+   });  });
 </script>
 
 </body>
