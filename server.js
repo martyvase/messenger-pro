@@ -5,7 +5,6 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const multer = require('multer');
-const path = require('path');
 
 // ========== ФАЙЛЫ ==========
 const USERS_FILE = path.join(__dirname, 'users.json');
@@ -30,117 +29,167 @@ function saveMessages() {
 const server = http.createServer((req, res) => {
     const url = req.url;
     
-    // Статические файлы
-    if (url === '/' || url === '/index.html') serveFile('index.html', res);
-    else if (url === '/login.html') serveFile('login.html', res);
-    else if (url === '/register.html') serveFile('register.html', res);
+    // СТАТИЧЕСКИЕ ФАЙЛЫ
+    if (url === '/' || url === '/index.html') {
+        serveFile('index.html', res);
+        return;
+    }
+    if (url === '/login.html') {
+        serveFile('login.html', res);
+        return;
+    }
+    if (url === '/register.html') {
+        serveFile('register.html', res);
+        return;
+    }
+    
+    // РАЗДАЧА ЗАГРУЖЕННЫХ ФАЙЛОВ
+    if (url.startsWith('/uploads/')) {
+        const filePath = path.join('/var/www/uploads', path.basename(url));
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                console.error('❌ Файл не найден:', filePath);
+                res.writeHead(404);
+                return res.end('File not found');
+            }
+            const ext = path.extname(filePath);
+            const contentType = {
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.pdf': 'application/pdf',
+                '.txt': 'text/plain',
+                '.doc': 'application/msword',
+                '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            }[ext] || 'application/octet-stream';
+            
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(data);
+        });
+        return;
+    }
     
     // API
-    else if (url === '/api/register' && req.method === 'POST') handleRegister(req, res);
-    else if (url === '/api/login' && req.method === 'POST') handleLogin(req, res);
-    else if (url === '/api/users' && req.method === 'GET') handleGetUsers(req, res);
-    else if (url.startsWith('/api/messages/') && req.method === 'GET') handleGetMessages(req, res);
-    // ========== ЗАГРУЗКА ФАЙЛОВ ==========
-
-// 1. Раздача загруженных файлов (статики)
-if (url.startsWith('/uploads/')) {
-    const filePath = path.join(__dirname, url);
-    fs.readFile(filePath, (err, data) => {
-        if (err) {
-            res.writeHead(404);
-            return res.end('File not found');
-        }
-        // Определяем тип файла по расширению
-        const ext = path.extname(filePath);
-        const contentType = {
-            '.jpg': 'image/jpeg',
-            '.jpeg': 'image/jpeg',
-            '.png': 'image/png',
-            '.gif': 'image/gif',
-            '.pdf': 'application/pdf',
-            '.txt': 'text/plain',
-            '.doc': 'application/msword',
-            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        }[ext] || 'application/octet-stream';
-        
-        res.writeHead(200, { 'Content-Type': contentType });
-        res.end(data);
-    });
-    return;
-}
-
-// 2. Загрузка нового файла
-if (url === '/api/upload' && req.method === 'POST') {
-    // Настройка multer для этого конкретного запроса
-    const storage = multer.diskStorage({
-        destination: function (req, file, cb) {
-            const uploadDir = path.join(__dirname, 'uploads');
-            // Создаём папку, если её нет
-            if (!fs.existsSync(uploadDir)) {
-                fs.mkdirSync(uploadDir, { recursive: true });
-            }
-            cb(null, uploadDir);
-        },
-        filename: function (req, file, cb) {
-            // Генерируем уникальное имя файла
-            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-            const ext = path.extname(file.originalname);
-            cb(null, 'file-' + uniqueSuffix + ext);
-        }
-    });
-
-    // Фильтр для безопасных типов файлов
-    const fileFilter = (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|pdf|txt|doc|docx/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Неподдерживаемый тип файла'));
-        }
-    };
-
-    const upload = multer({ 
-        storage: storage,
-        limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
-        fileFilter: fileFilter
-    }).single('file');
-
-    // Запускаем загрузку
-    upload(req, res, (err) => {
-        if (err) {
-            console.error('Ошибка загрузки:', err);
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: err.message }));
-        }
-        
-        if (!req.file) {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            return res.end(JSON.stringify({ error: 'Файл не загружен' }));
-        }
-        
-        const fileUrl = `/uploads/${req.file.filename}`;
-        
-        console.log(`✅ Файл загружен: ${fileUrl} (${req.file.size} bytes)`);
-        
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({
-            success: true,
-            filename: req.file.filename,
-            originalName: req.file.originalname,
-            url: fileUrl,
-            size: req.file.size,
-            mimetype: req.file.mimetype
-        }));
-    });
-    return;
-}
-    else {
-        res.writeHead(404);
-        res.end('Not found');
+    if (url === '/api/register' && req.method === 'POST') {
+        handleRegister(req, res);
+        return;
     }
+    if (url === '/api/login' && req.method === 'POST') {
+        handleLogin(req, res);
+        return;
+    }
+    if (url === '/api/users' && req.method === 'GET') {
+        handleGetUsers(req, res);
+        return;
+    }
+    if (url.startsWith('/api/messages/') && req.method === 'GET') {
+        handleGetMessages(req, res);
+        return;
+    }
+    
+    // ЗАГРУЗКА ФАЙЛА
+    if (url === '/api/upload' && req.method === 'POST') {
+        const storage = multer.diskStorage({
+            destination: function (req, file, cb) {
+                const uploadDir = '/var/www/uploads';
+                if (!fs.existsSync(uploadDir)) {
+                    fs.mkdirSync(uploadDir, { recursive: true });
+                }
+                cb(null, uploadDir);
+            },
+            filename: function (req, file, cb) {
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                const ext = path.extname(file.originalname);
+                cb(null, 'file-' + uniqueSuffix + ext);
+            }
+        });
+
+        // ===== УЛУЧШЕННЫЙ ФИЛЬТР =====
+        const fileFilter = (req, file, cb) => {
+            console.log('🔍 Проверка файла:', {
+                originalname: file.originalname,
+                mimetype: file.mimetype,
+                ext: path.extname(file.originalname)
+            });
+            
+            // Разрешаем ВСЕ изображения
+            if (file.mimetype.startsWith('image/')) {
+                console.log('✅ Изображение разрешено');
+                return cb(null, true);
+            }
+            
+            // Разрешаем текстовые файлы
+            if (file.mimetype === 'text/plain') {
+                console.log('✅ Текстовый файл разрешён');
+                return cb(null, true);
+            }
+            
+            // Разрешаем PDF
+            if (file.mimetype === 'application/pdf') {
+                console.log('✅ PDF разрешён');
+                return cb(null, true);
+            }
+            
+            // Разрешаем документы Word
+            if (file.mimetype === 'application/msword' || 
+                file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                console.log('✅ Word документ разрешён');
+                return cb(null, true);
+            }
+            
+            // Разрешаем по расширению для непонятных случаев
+            const allowedExts = /\.(jpeg|jpg|png|gif|pdf|txt|doc|docx)$/i;
+            if (allowedExts.test(file.originalname)) {
+                console.log('✅ Файл разрешён по расширению');
+                return cb(null, true);
+            }
+            
+            console.log('❌ Файл запрещён:', file.mimetype);
+            cb(new Error('Неподдерживаемый тип файла. Разрешены: изображения, PDF, документы Word, текстовые файлы'));
+        };
+
+        const upload = multer({ 
+            storage: storage,
+            limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+            fileFilter: fileFilter
+        }).single('file');
+
+        upload(req, res, (err) => {
+            if (err) {
+                console.error('❌ Ошибка загрузки:', err.message);
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: err.message }));
+            }
+            
+            if (!req.file) {
+                console.error('❌ Файл не загружен');
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                return res.end(JSON.stringify({ error: 'Файл не загружен' }));
+            }
+            
+            const fileUrl = `/uploads/${req.file.filename}`;
+            
+            console.log(`✅ Файл загружен: ${fileUrl} (${req.file.size} bytes)`);
+            console.log(`   Оригинальное имя: ${req.file.originalname}`);
+            console.log(`   MIME-тип: ${req.file.mimetype}`);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                filename: req.file.filename,
+                originalName: req.file.originalname,
+                url: fileUrl,
+                size: req.file.size,
+                mimetype: req.file.mimetype
+            }));
+        });
+        return;
+    }
+    
+    // 404
+    res.writeHead(404);
+    res.end('Not found');
 });
 
 function serveFile(filename, res) {
@@ -273,14 +322,12 @@ wss.on('connection', (ws, req) => {
         
         console.log(`📋 Параметры: userId=${userId}, username=${username}`);
         
-        // Если нет параметров - создаем временные
         if (!userId || !username) {
             console.log('⚠️ Нет параметров, создаем временного пользователя');
             userId = 'temp_' + Date.now();
             username = 'User_' + Math.floor(Math.random() * 1000);
         }
         
-        // Находим или создаем пользователя
         let user = users.find(u => u.id === userId);
         if (!user) {
             user = {
@@ -297,21 +344,17 @@ wss.on('connection', (ws, req) => {
         user.lastSeen = new Date().toISOString();
         saveUsers();
         
-        // Сохраняем в onlineUsers
         onlineUsers.set(ws, { ...user, ws });
         
-        // Отправляем подтверждение
         ws.send(JSON.stringify({
             type: 'auth_success',
             user: { id: user.id, username: user.username }
         }));
         
-        // Отправляем список онлайн пользователей
         broadcastOnlineUsers();
         
         console.log(`✅ Пользователь ${user.username} подключился`);
         
-        // ===== ОБРАБОТКА СООБЩЕНИЙ =====
         ws.on('message', (data) => {
             try {
                 const message = JSON.parse(data);
@@ -330,7 +373,6 @@ wss.on('connection', (ws, req) => {
             }
         });
         
-        // ===== ОТКЛЮЧЕНИЕ =====
         ws.on('close', () => {
             console.log(`🔴 Пользователь ${user.username} отключился`);
             
@@ -357,17 +399,28 @@ function handlePrivateMessage(ws, message) {
     const fromUser = onlineUsers.get(ws);
     const toUserId = message.to;
     const text = message.text;
+    const fileUrl = message.fileUrl;
+    const fileName = message.fileName;
     
-    if (!fromUser || !toUserId || !text) return;
+    console.log('📨 handlePrivateMessage вызван');
+    console.log('   from:', fromUser?.username);
+    console.log('   to:', toUserId);
+    console.log('   text:', text);
+    console.log('   fileUrl:', fileUrl);
+    console.log('   fileName:', fileName);
     
-    console.log(`✉️ ${fromUser.username} → ${toUserId}: ${text}`);
+    if (!fromUser || !toUserId) {
+        console.log('❌ Нет отправителя или получателя');
+        return;
+    }
     
-    // Создаем сообщение
     const msg = {
         id: uuidv4(),
         from: fromUser.id,
         to: toUserId,
-        text: text,
+        text: text || '',
+        fileUrl: fileUrl,
+        fileName: fileName,
         timestamp: new Date().toISOString(),
         fromUser: {
             id: fromUser.id,
@@ -375,25 +428,25 @@ function handlePrivateMessage(ws, message) {
         }
     };
     
-    // Сохраняем в историю
     messages.push(msg);
     saveMessages();
     
-    // Отправляем ОТПРАВИТЕЛЮ (чтобы увидел свое сообщение)
-    ws.send(JSON.stringify({
-        type: 'private_message',
-        message: msg
-    }));
+    // Отправляем отправителю
+    ws.send(JSON.stringify({ type: 'private_message', message: msg }));
+    console.log('✅ Сообщение отправлено отправителю');
     
-    // Отправляем ПОЛУЧАТЕЛЮ (если онлайн)
-    for (let [client, user] of onlineUsers.entries()) {
+    // Отправляем получателю
+    let sentToReceiver = false;
+    onlineUsers.forEach((user, client) => {
         if (user.id === toUserId && client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({
-                type: 'private_message',
-                message: msg
-            }));
-            break;
+            console.log('📤 Отправка получателю:', user.username);
+            client.send(JSON.stringify({ type: 'private_message', message: msg }));
+            sentToReceiver = true;
         }
+    });
+    
+    if (!sentToReceiver) {
+        console.log('❌ Получатель не в сети или не найден');
     }
 }
 
@@ -454,7 +507,6 @@ server.listen(PORT, '0.0.0.0', () => {
     `);
 });
 
-// Завершение работы
 process.on('SIGINT', () => {
     users.forEach(u => { u.status = 'offline'; });
     saveUsers();

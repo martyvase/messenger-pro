@@ -772,6 +772,32 @@
             background: #667eea;
             border-radius: 3px;
         }
+
+        /* Исправление для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
@@ -981,7 +1007,7 @@
                 themeBtn.addEventListener('click', this.toggleTheme);
             }
             
-            // ===== НОВЫЕ ОБРАБОТЧИКИ ДЛЯ ФАЙЛОВ =====
+            // ===== ОБРАБОТЧИКИ ДЛЯ ФАЙЛОВ =====
             document.getElementById('attachFileBtn').addEventListener('click', () => {
                 document.getElementById('fileInput').click();
             });
@@ -990,17 +1016,30 @@
                 this.handleFileSelect(e);
             });
             
-            document.getElementById('sendImageBtn').addEventListener('click', () => {
-                this.uploadSelectedFile();
-            });
+            // Прямое назначение обработчиков для модального окна
+            const sendImageBtn = document.getElementById('sendImageBtn');
+            if (sendImageBtn) {
+                sendImageBtn.onclick = () => {
+                    console.log('🖱️ Нажата кнопка "Отправить" (onclick)');
+                    this.uploadSelectedFile();
+                };
+            }
             
-            document.getElementById('cancelImageBtn').addEventListener('click', () => {
-                this.closeImagePreview();
-            });
+            const cancelImageBtn = document.getElementById('cancelImageBtn');
+            if (cancelImageBtn) {
+                cancelImageBtn.onclick = () => {
+                    console.log('❌ Отмена (onclick)');
+                    this.closeImagePreview();
+                };
+            }
             
-            document.getElementById('closePreview').addEventListener('click', () => {
-                this.closeImagePreview();
-            });
+            const closePreview = document.getElementById('closePreview');
+            if (closePreview) {
+                closePreview.onclick = () => {
+                    console.log('❌ Закрыть (onclick)');
+                    this.closeImagePreview();
+                };
+            }
         }
         
         toggleTheme() {
@@ -1224,29 +1263,52 @@
         }
         
         handleFileSelect(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            console.log('📁 handleFileSelect вызван', event.target.files);
+            const selectedFile = event.target.files[0];
+            console.log('📄 Выбран файл:', selectedFile);
             
-            this.selectedFile = file;
+            if (!selectedFile) {
+                console.log('❌ Файл не выбран');
+                return;
+            }
             
-            if (file.type.startsWith('image/')) {
+            this.selectedFile = selectedFile;
+            console.log('✅ selectedFile сохранён:', this.selectedFile);
+            
+            if (selectedFile.type.startsWith('image/')) {
+                console.log('🖼️ Это изображение, показываем предпросмотр');
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    console.log('📸 Изображение загружено в reader');
                     this.filePreviewUrl = e.target.result;
                     document.getElementById('previewImage').src = e.target.result;
                     document.getElementById('imagePreviewModal').style.display = 'flex';
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(selectedFile);
             } else {
+                console.log('📎 Это не изображение, загружаем сразу');
                 this.uploadSelectedFile();
             }
         }
         
         async uploadSelectedFile() {
-            if (!this.selectedFile || !this.currentChat) return;
+            console.log('🚀 uploadSelectedFile вызван');
+            console.log('📁 selectedFile:', this.selectedFile);
+            console.log('💬 currentChat:', this.currentChat);
+            
+            if (!this.selectedFile) {
+                console.log('❌ Нет выбранного файла');
+                return;
+            }
+            if (!this.currentChat) {
+                console.log('❌ Нет текущего чата');
+                return;
+            }
             
             const formData = new FormData();
             formData.append('file', this.selectedFile);
+            
+            console.log('📤 Отправка файла на /api/upload');
             
             try {
                 const response = await fetch('/api/upload', {
@@ -1254,22 +1316,31 @@
                     body: formData
                 });
                 
+                console.log('📥 Статус ответа:', response.status);
+                
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('✅ Файл загружен, ответ сервера:', data);
                     this.sendFileMessage(data);
                     this.closeImagePreview();
                 } else {
                     const error = await response.json();
+                    console.error('❌ Ошибка загрузки:', error);
                     alert('Ошибка: ' + error.error);
                 }
             } catch (error) {
-                console.error('Ошибка:', error);
+                console.error('🔥 Ошибка fetch:', error);
                 alert('Ошибка при загрузке файла');
             }
         }
         
         sendFileMessage(fileData) {
-            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            console.log('✉️ sendFileMessage', fileData);
+            
+            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                console.log('❌ Нельзя отправить сообщение: нет чата или WebSocket');
+                return;
+            }
             
             const isImage = fileData.mimetype.startsWith('image/');
             
@@ -1295,6 +1366,7 @@
             
             this.renderMessages(this.currentChat.id);
             
+            console.log('📤 Отправка WebSocket сообщения с файлом');
             this.ws.send(JSON.stringify({
                 type: 'private_message',
                 to: this.currentChat.id,
@@ -1308,6 +1380,7 @@
         }
         
         closeImagePreview() {
+            console.log('❌ Закрытие предпросмотра');
             document.getElementById('imagePreviewModal').style.display = 'none';
             this.filePreviewUrl = null;
             this.selectedFile = null;
