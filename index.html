@@ -190,7 +190,7 @@
             background: #f8f9fa;
             height: 100vh;
             overflow: hidden;
-            position: relative; /* Для позиционирования welcome-screen */
+            position: relative;
         }
         
         .chat-header {
@@ -404,6 +404,70 @@
         
         #sendBtn:hover {
             transform: scale(1.05);
+        }
+        
+        /* ========== СТИЛИ ДЛЯ ФАЙЛОВ ========== */
+        .attach-btn {
+            background: transparent;
+            color: #667eea;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .attach-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.1);
+        }
+
+        .message-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: transform 0.2s;
+        }
+
+        .message-image:hover {
+            transform: scale(1.05);
+        }
+
+        .message-file {
+            display: inline-block;
+            padding: 8px 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            color: #667eea;
+            text-decoration: none;
+            margin-top: 5px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .message-file:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            z-index: 1;
+        }
+
+        .close-modal:hover {
+            color: #333;
         }
         
         /* ========== ТЁМНАЯ ТЕМА - ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ========== */
@@ -708,6 +772,32 @@
             background: #667eea;
             border-radius: 3px;
         }
+
+        /* Исправление для модального окна */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 20000;
+            align-items: center;
+            justify-content: center;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            pointer-events: auto;
+        }
     </style>
 </head>
 <body>
@@ -797,12 +887,28 @@
         <div class="messages-container" id="messagesContainer"></div>
         
         <div class="input-area" id="inputArea" style="display: none;">
+            <button id="attachFileBtn" class="attach-btn">📎</button>
             <textarea 
                 id="messageInput" 
                 placeholder="Введите сообщение..."
                 rows="1"
             ></textarea>
             <button id="sendBtn">➤</button>
+        </div>
+    </div>
+</div>
+
+<!-- Скрытый input для выбора файла -->
+<input type="file" id="fileInput" style="display: none;">
+
+<!-- Модальное окно предпросмотра изображений -->
+<div id="imagePreviewModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close-modal" id="closePreview">&times;</span>
+        <img id="previewImage" src="" style="max-width: 100%; max-height: 400px;">
+        <div class="modal-buttons">
+            <button id="sendImageBtn" class="modal-btn">Отправить</button>
+            <button id="cancelImageBtn" class="modal-btn" style="background: #f0f2f5; color: #333;">Отмена</button>
         </div>
     </div>
 </div>
@@ -814,12 +920,14 @@
             this.username = localStorage.getItem('username');
             this.ws = null;
             this.currentChat = null;
-            this.currentGroup = null; // Добавил для совместимости с будущими группами
+            this.currentGroup = null;
             this.users = [];
-            this.groups = []; // Добавил для совместимости
+            this.groups = [];
             this.messages = new Map();
-            this.groupMessages = new Map(); // Добавил для совместимости
+            this.groupMessages = new Map();
             this.unread = new Map();
+            this.selectedFile = null;
+            this.filePreviewUrl = null;
             
             if (!this.userId || !this.username) {
                 window.location.href = 'login.html';
@@ -833,18 +941,16 @@
             this.initTheme();
             this.bindEvents();
             await this.loadUsers();
-            await this.loadGroups?.(); // безопасный вызов, если метод есть
+            await this.loadGroups?.();
             this.connectWebSocket();
             this.updateUI();
             
-            // ===== ПОКАЗЫВАЕМ ПРИВЕТСТВИЕ =====
             this.showWelcomeScreen();
             
             setInterval(() => this.loadUsers(), 30000);
             if (this.loadGroups) setInterval(() => this.loadGroups(), 30000);
         }
         
-        // ========== ПРИВЕТСТВЕННЫЙ ЭКРАН ==========
         showWelcomeScreen() {
             const welcomeScreen = document.getElementById('welcomeScreen');
             const chatHeader = document.getElementById('chatHeader');
@@ -896,10 +1002,43 @@
                 }
             });
             
-            // Переключатель темы
             const themeBtn = document.getElementById('themeToggleBtn');
             if (themeBtn) {
                 themeBtn.addEventListener('click', this.toggleTheme);
+            }
+            
+            // ===== ОБРАБОТЧИКИ ДЛЯ ФАЙЛОВ =====
+            document.getElementById('attachFileBtn').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+            
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                this.handleFileSelect(e);
+            });
+            
+            // Прямое назначение обработчиков для модального окна
+            const sendImageBtn = document.getElementById('sendImageBtn');
+            if (sendImageBtn) {
+                sendImageBtn.onclick = () => {
+                    console.log('🖱️ Нажата кнопка "Отправить" (onclick)');
+                    this.uploadSelectedFile();
+                };
+            }
+            
+            const cancelImageBtn = document.getElementById('cancelImageBtn');
+            if (cancelImageBtn) {
+                cancelImageBtn.onclick = () => {
+                    console.log('❌ Отмена (onclick)');
+                    this.closeImagePreview();
+                };
+            }
+            
+            const closePreview = document.getElementById('closePreview');
+            if (closePreview) {
+                closePreview.onclick = () => {
+                    console.log('❌ Закрыть (onclick)');
+                    this.closeImagePreview();
+                };
             }
         }
         
@@ -967,7 +1106,6 @@
             const user = this.users.find(u => u.id === userId);
             if (!user) return;
             
-            // ===== ПРЯЧЕМ ПРИВЕТСТВИЕ =====
             this.hideWelcomeScreen();
             
             this.currentChat = user;
@@ -986,10 +1124,8 @@
             document.getElementById('sidebar').classList.remove('active');
         }
         
-        // Заглушка для будущих групп
         selectGroup(groupId) {
             this.hideWelcomeScreen();
-            // здесь будет логика групп
         }
         
         async loadChatHistory(userId) {
@@ -1027,9 +1163,22 @@
                     minute: '2-digit' 
                 });
                 
+                let contentHtml = '';
+                if (msg.fileUrl) {
+                    const isImage = msg.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i);
+                    if (isImage) {
+                        contentHtml += `<img src="${msg.fileUrl}" class="message-image" onclick="window.open('${msg.fileUrl}')">`;
+                    } else {
+                        contentHtml += `<a href="${msg.fileUrl}" download class="message-file">📎 ${msg.fileName || 'Файл'}</a>`;
+                    }
+                }
+                if (msg.text) {
+                    contentHtml += `<div class="message-content">${this.escapeHtml(msg.text)}</div>`;
+                }
+                
                 html += `
                     <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
-                        <div class="message-content">${this.escapeHtml(msg.text)}</div>
+                        ${contentHtml}
                         <div class="message-time">${time}</div>
                     </div>
                 `;
@@ -1111,6 +1260,131 @@
                     this.renderUsersList(document.getElementById('searchUsers').value);
                 }
             }
+        }
+        
+        handleFileSelect(event) {
+            console.log('📁 handleFileSelect вызван', event.target.files);
+            const selectedFile = event.target.files[0];
+            console.log('📄 Выбран файл:', selectedFile);
+            
+            if (!selectedFile) {
+                console.log('❌ Файл не выбран');
+                return;
+            }
+            
+            this.selectedFile = selectedFile;
+            console.log('✅ selectedFile сохранён:', this.selectedFile);
+            
+            if (selectedFile.type.startsWith('image/')) {
+                console.log('🖼️ Это изображение, показываем предпросмотр');
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    console.log('📸 Изображение загружено в reader');
+                    this.filePreviewUrl = e.target.result;
+                    document.getElementById('previewImage').src = e.target.result;
+                    document.getElementById('imagePreviewModal').style.display = 'flex';
+                };
+                reader.readAsDataURL(selectedFile);
+            } else {
+                console.log('📎 Это не изображение, загружаем сразу');
+                this.uploadSelectedFile();
+            }
+        }
+        
+        async uploadSelectedFile() {
+            console.log('🚀 uploadSelectedFile вызван');
+            console.log('📁 selectedFile:', this.selectedFile);
+            console.log('💬 currentChat:', this.currentChat);
+            
+            if (!this.selectedFile) {
+                console.log('❌ Нет выбранного файла');
+                return;
+            }
+            if (!this.currentChat) {
+                console.log('❌ Нет текущего чата');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', this.selectedFile);
+            
+            console.log('📤 Отправка файла на /api/upload');
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('📥 Статус ответа:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Файл загружен, ответ сервера:', data);
+                    this.sendFileMessage(data);
+                    this.closeImagePreview();
+                } else {
+                    const error = await response.json();
+                    console.error('❌ Ошибка загрузки:', error);
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('🔥 Ошибка fetch:', error);
+                alert('Ошибка при загрузке файла');
+            }
+        }
+        
+        sendFileMessage(fileData) {
+            console.log('✉️ sendFileMessage', fileData);
+            
+            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                console.log('❌ Нельзя отправить сообщение: нет чата или WebSocket');
+                return;
+            }
+            
+            const isImage = fileData.mimetype.startsWith('image/');
+            
+            const tempId = 'temp_' + Date.now();
+            const tempMessage = {
+                id: tempId,
+                from: this.userId,
+                to: this.currentChat.id,
+                text: isImage ? '📷 Изображение' : '📎 Файл',
+                fileUrl: fileData.url,
+                fileName: fileData.originalName,
+                timestamp: new Date().toISOString(),
+                fromUser: { id: this.userId, username: this.username }
+            };
+            
+            if (!this.messages.has(this.currentChat.id)) {
+                this.messages.set(this.currentChat.id, []);
+            }
+            
+            const chatMessages = this.messages.get(this.currentChat.id);
+            chatMessages.push(tempMessage);
+            chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            this.renderMessages(this.currentChat.id);
+            
+            console.log('📤 Отправка WebSocket сообщения с файлом');
+            this.ws.send(JSON.stringify({
+                type: 'private_message',
+                to: this.currentChat.id,
+                text: isImage ? '📷 Изображение' : '📎 Файл',
+                fileUrl: fileData.url,
+                fileName: fileData.originalName
+            }));
+            
+            this.selectedFile = null;
+            document.getElementById('fileInput').value = '';
+        }
+        
+        closeImagePreview() {
+            console.log('❌ Закрытие предпросмотра');
+            document.getElementById('imagePreviewModal').style.display = 'none';
+            this.filePreviewUrl = null;
+            this.selectedFile = null;
+            document.getElementById('fileInput').value = '';
         }
         
         sendMessage() {
