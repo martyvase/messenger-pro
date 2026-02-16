@@ -27,15 +27,17 @@
 ```bash
 git clone git@github.com:martyvase/messenger-pro.git
 cd messenger-pro
+
 2. Установить зависимости
-bash
+```bash
 npm install
+
 3. Запустить сервер
-bash
+```bash
 node server.js
 Рекомендуемый способ (работает 24/7):
 
-bash
+```bash
 npm install -g pm2
 pm2 start server.js --name messenger
 pm2 save
@@ -68,28 +70,30 @@ messenger-pro/
 ├── messages.json      # База сообщений (создаётся автоматически, НЕ В GIT)
 │
 └── node_modules/      # Зависимости (не в Git, устанавливаются через npm)
-🔧 КОМАНДЫ ДЛЯ АДМИНИСТРИРОВАНИЯ
+
+# 🔧 КОМАНДЫ ДЛЯ АДМИНИСТРИРОВАНИЯ
 Запуск через PM2
-bash
+```bash
 pm2 start server.js --name messenger
 pm2 save
 pm2 startup
 Просмотр статуса
-bash
+```bash
 pm2 status
 pm2 logs messenger
 Перезапуск
-bash
+```bash
 pm2 restart messenger
 Остановка
-bash
+```bash
 pm2 stop messenger
 pm2 delete messenger
-📱 ДОСТУП С ДРУГИХ УСТРОЙСТВ
+
+#📱 ДОСТУП С ДРУГИХ УСТРОЙСТВ
 Замените localhost на IP вашего сервера:
 
 text
-http://123.45.67.89:8080
+http://ваш-сервер:8080/
 Страницы:
 
 http://ваш-сервер:8080/ — чат (после входа)
@@ -98,24 +102,25 @@ http://ваш-сервер:8080/login.html — вход
 
 http://ваш-сервер:8080/register.html — регистрация
 
-📦 ВЕРСИИ
+#📦 ВЕРСИИ
 Версия	Что нового
 v1.0.0	Первый релиз: регистрация, личные сообщения, WebSocket
 v1.1.0	Тёмная тема, переключатель в сайдбаре
 v1.1.1	Приветственный ASCII-экран
 v1.2.0	📎 Загрузка файлов и изображений
-🧑‍💻 ДЛЯ РАЗРАБОТЧИКОВ
+
+#🧑‍💻 ДЛЯ РАЗРАБОТЧИКОВ
 Установка с нуля на новый сервер
 1. Установка Node.js
-bash
+```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs git
 2. Клонирование
-bash
+```bash
 git clone git@github.com:martyvase/messenger-pro.git
 cd messenger-pro
 3. Установка и запуск
-bash
+```bash
 npm install
 npm install -g pm2
 pm2 start server.js --name messenger
@@ -123,15 +128,15 @@ pm2 save
 pm2 startup
 Работа с Git
 Создать новую ветку
-bash
+```bash
 git checkout -b feature/название
 После изменений
-bash
+```bash
 git add .
 git commit -m "Описание изменений"
 git push origin feature/название
-Важно! Никогда не добавляйте в Git
-bash
+
+```bash
 # Эти файлы уже в .gitignore, но на всякий случай:
 users.json
 messages.json
@@ -139,7 +144,8 @@ node_modules/
 *.log
 .env
 uploads/
-🤝 КАК ВНЕСТИ СВОЙ ВКЛАД
+
+#🤝 КАК ВНЕСТИ СВОЙ ВКЛАД
 Форкните репозиторий на GitHub
 
 Создайте ветку: git checkout -b feature/ваша-фича
