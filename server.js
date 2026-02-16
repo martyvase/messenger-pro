@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
+const multer = require('multer');
+const path = require('path');
 
 // ========== ФАЙЛЫ ==========
 const USERS_FILE = path.join(__dirname, 'users.json');
@@ -38,6 +40,103 @@ const server = http.createServer((req, res) => {
     else if (url === '/api/login' && req.method === 'POST') handleLogin(req, res);
     else if (url === '/api/users' && req.method === 'GET') handleGetUsers(req, res);
     else if (url.startsWith('/api/messages/') && req.method === 'GET') handleGetMessages(req, res);
+    // ========== ЗАГРУЗКА ФАЙЛОВ ==========
+
+// 1. Раздача загруженных файлов (статики)
+if (url.startsWith('/uploads/')) {
+    const filePath = path.join(__dirname, url);
+    fs.readFile(filePath, (err, data) => {
+        if (err) {
+            res.writeHead(404);
+            return res.end('File not found');
+        }
+        // Определяем тип файла по расширению
+        const ext = path.extname(filePath);
+        const contentType = {
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.pdf': 'application/pdf',
+            '.txt': 'text/plain',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        }[ext] || 'application/octet-stream';
+        
+        res.writeHead(200, { 'Content-Type': contentType });
+        res.end(data);
+    });
+    return;
+}
+
+// 2. Загрузка нового файла
+if (url === '/api/upload' && req.method === 'POST') {
+    // Настройка multer для этого конкретного запроса
+    const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            const uploadDir = path.join(__dirname, 'uploads');
+            // Создаём папку, если её нет
+            if (!fs.existsSync(uploadDir)) {
+                fs.mkdirSync(uploadDir, { recursive: true });
+            }
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            // Генерируем уникальное имя файла
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            const ext = path.extname(file.originalname);
+            cb(null, 'file-' + uniqueSuffix + ext);
+        }
+    });
+
+    // Фильтр для безопасных типов файлов
+    const fileFilter = (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif|pdf|txt|doc|docx/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Неподдерживаемый тип файла'));
+        }
+    };
+
+    const upload = multer({ 
+        storage: storage,
+        limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+        fileFilter: fileFilter
+    }).single('file');
+
+    // Запускаем загрузку
+    upload(req, res, (err) => {
+        if (err) {
+            console.error('Ошибка загрузки:', err);
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: err.message }));
+        }
+        
+        if (!req.file) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            return res.end(JSON.stringify({ error: 'Файл не загружен' }));
+        }
+        
+        const fileUrl = `/uploads/${req.file.filename}`;
+        
+        console.log(`✅ Файл загружен: ${fileUrl} (${req.file.size} bytes)`);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            success: true,
+            filename: req.file.filename,
+            originalName: req.file.originalname,
+            url: fileUrl,
+            size: req.file.size,
+            mimetype: req.file.mimetype
+        }));
+    });
+    return;
+}
     else {
         res.writeHead(404);
         res.end('Not found');

@@ -1,6 +1,7 @@
 # Данные пользователей (НИКОГДА НЕ ПУШИТЬ!)
 users.json
 messages.json
+uploads/
 *.db
 *.sqlite
 

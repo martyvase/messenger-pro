@@ -190,7 +190,7 @@
             background: #f8f9fa;
             height: 100vh;
             overflow: hidden;
-            position: relative; /* Для позиционирования welcome-screen */
+            position: relative;
         }
         
         .chat-header {
@@ -404,6 +404,70 @@
         
         #sendBtn:hover {
             transform: scale(1.05);
+        }
+        
+        /* ========== СТИЛИ ДЛЯ ФАЙЛОВ ========== */
+        .attach-btn {
+            background: transparent;
+            color: #667eea;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .attach-btn:hover {
+            background: rgba(102, 126, 234, 0.1);
+            transform: scale(1.1);
+        }
+
+        .message-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: transform 0.2s;
+        }
+
+        .message-image:hover {
+            transform: scale(1.05);
+        }
+
+        .message-file {
+            display: inline-block;
+            padding: 8px 15px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 8px;
+            color: #667eea;
+            text-decoration: none;
+            margin-top: 5px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .message-file:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            z-index: 1;
+        }
+
+        .close-modal:hover {
+            color: #333;
         }
         
         /* ========== ТЁМНАЯ ТЕМА - ПЕРЕКЛЮЧАТЕЛЬ В САЙДБАРЕ ========== */
@@ -797,12 +861,28 @@
         <div class="messages-container" id="messagesContainer"></div>
         
         <div class="input-area" id="inputArea" style="display: none;">
+            <button id="attachFileBtn" class="attach-btn">📎</button>
             <textarea 
                 id="messageInput" 
                 placeholder="Введите сообщение..."
                 rows="1"
             ></textarea>
             <button id="sendBtn">➤</button>
+        </div>
+    </div>
+</div>
+
+<!-- Скрытый input для выбора файла -->
+<input type="file" id="fileInput" style="display: none;">
+
+<!-- Модальное окно предпросмотра изображений -->
+<div id="imagePreviewModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <span class="close-modal" id="closePreview">&times;</span>
+        <img id="previewImage" src="" style="max-width: 100%; max-height: 400px;">
+        <div class="modal-buttons">
+            <button id="sendImageBtn" class="modal-btn">Отправить</button>
+            <button id="cancelImageBtn" class="modal-btn" style="background: #f0f2f5; color: #333;">Отмена</button>
         </div>
     </div>
 </div>
@@ -814,12 +894,14 @@
             this.username = localStorage.getItem('username');
             this.ws = null;
             this.currentChat = null;
-            this.currentGroup = null; // Добавил для совместимости с будущими группами
+            this.currentGroup = null;
             this.users = [];
-            this.groups = []; // Добавил для совместимости
+            this.groups = [];
             this.messages = new Map();
-            this.groupMessages = new Map(); // Добавил для совместимости
+            this.groupMessages = new Map();
             this.unread = new Map();
+            this.selectedFile = null;
+            this.filePreviewUrl = null;
             
             if (!this.userId || !this.username) {
                 window.location.href = 'login.html';
@@ -833,18 +915,16 @@
             this.initTheme();
             this.bindEvents();
             await this.loadUsers();
-            await this.loadGroups?.(); // безопасный вызов, если метод есть
+            await this.loadGroups?.();
             this.connectWebSocket();
             this.updateUI();
             
-            // ===== ПОКАЗЫВАЕМ ПРИВЕТСТВИЕ =====
             this.showWelcomeScreen();
             
             setInterval(() => this.loadUsers(), 30000);
             if (this.loadGroups) setInterval(() => this.loadGroups(), 30000);
         }
         
-        // ========== ПРИВЕТСТВЕННЫЙ ЭКРАН ==========
         showWelcomeScreen() {
             const welcomeScreen = document.getElementById('welcomeScreen');
             const chatHeader = document.getElementById('chatHeader');
@@ -896,11 +976,31 @@
                 }
             });
             
-            // Переключатель темы
             const themeBtn = document.getElementById('themeToggleBtn');
             if (themeBtn) {
                 themeBtn.addEventListener('click', this.toggleTheme);
             }
+            
+            // ===== НОВЫЕ ОБРАБОТЧИКИ ДЛЯ ФАЙЛОВ =====
+            document.getElementById('attachFileBtn').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+            
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                this.handleFileSelect(e);
+            });
+            
+            document.getElementById('sendImageBtn').addEventListener('click', () => {
+                this.uploadSelectedFile();
+            });
+            
+            document.getElementById('cancelImageBtn').addEventListener('click', () => {
+                this.closeImagePreview();
+            });
+            
+            document.getElementById('closePreview').addEventListener('click', () => {
+                this.closeImagePreview();
+            });
         }
         
         toggleTheme() {
@@ -967,7 +1067,6 @@
             const user = this.users.find(u => u.id === userId);
             if (!user) return;
             
-            // ===== ПРЯЧЕМ ПРИВЕТСТВИЕ =====
             this.hideWelcomeScreen();
             
             this.currentChat = user;
@@ -986,10 +1085,8 @@
             document.getElementById('sidebar').classList.remove('active');
         }
         
-        // Заглушка для будущих групп
         selectGroup(groupId) {
             this.hideWelcomeScreen();
-            // здесь будет логика групп
         }
         
         async loadChatHistory(userId) {
@@ -1027,9 +1124,22 @@
                     minute: '2-digit' 
                 });
                 
+                let contentHtml = '';
+                if (msg.fileUrl) {
+                    const isImage = msg.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i);
+                    if (isImage) {
+                        contentHtml += `<img src="${msg.fileUrl}" class="message-image" onclick="window.open('${msg.fileUrl}')">`;
+                    } else {
+                        contentHtml += `<a href="${msg.fileUrl}" download class="message-file">📎 ${msg.fileName || 'Файл'}</a>`;
+                    }
+                }
+                if (msg.text) {
+                    contentHtml += `<div class="message-content">${this.escapeHtml(msg.text)}</div>`;
+                }
+                
                 html += `
                     <div class="message ${isOutgoing ? 'outgoing' : 'incoming'}">
-                        <div class="message-content">${this.escapeHtml(msg.text)}</div>
+                        ${contentHtml}
                         <div class="message-time">${time}</div>
                     </div>
                 `;
@@ -1111,6 +1221,97 @@
                     this.renderUsersList(document.getElementById('searchUsers').value);
                 }
             }
+        }
+        
+        handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            this.selectedFile = file;
+            
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    this.filePreviewUrl = e.target.result;
+                    document.getElementById('previewImage').src = e.target.result;
+                    document.getElementById('imagePreviewModal').style.display = 'flex';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                this.uploadSelectedFile();
+            }
+        }
+        
+        async uploadSelectedFile() {
+            if (!this.selectedFile || !this.currentChat) return;
+            
+            const formData = new FormData();
+            formData.append('file', this.selectedFile);
+            
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.sendFileMessage(data);
+                    this.closeImagePreview();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.error);
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                alert('Ошибка при загрузке файла');
+            }
+        }
+        
+        sendFileMessage(fileData) {
+            if (!this.currentChat || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+            
+            const isImage = fileData.mimetype.startsWith('image/');
+            
+            const tempId = 'temp_' + Date.now();
+            const tempMessage = {
+                id: tempId,
+                from: this.userId,
+                to: this.currentChat.id,
+                text: isImage ? '📷 Изображение' : '📎 Файл',
+                fileUrl: fileData.url,
+                fileName: fileData.originalName,
+                timestamp: new Date().toISOString(),
+                fromUser: { id: this.userId, username: this.username }
+            };
+            
+            if (!this.messages.has(this.currentChat.id)) {
+                this.messages.set(this.currentChat.id, []);
+            }
+            
+            const chatMessages = this.messages.get(this.currentChat.id);
+            chatMessages.push(tempMessage);
+            chatMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            this.renderMessages(this.currentChat.id);
+            
+            this.ws.send(JSON.stringify({
+                type: 'private_message',
+                to: this.currentChat.id,
+                text: isImage ? '📷 Изображение' : '📎 Файл',
+                fileUrl: fileData.url,
+                fileName: fileData.originalName
+            }));
+            
+            this.selectedFile = null;
+            document.getElementById('fileInput').value = '';
+        }
+        
+        closeImagePreview() {
+            document.getElementById('imagePreviewModal').style.display = 'none';
+            this.filePreviewUrl = null;
+            this.selectedFile = null;
+            document.getElementById('fileInput').value = '';
         }
         
         sendMessage() {
