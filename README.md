@@ -27,14 +27,17 @@
 ```bash
 git clone git@github.com:martyvase/messenger-pro.git
 cd messenger-pro
+```
 
 2. Установить зависимости
 ```bash
 npm install
+```
 
 3. Запустить сервер
 ```bash
 node server.js
+```
 Рекомендуемый способ (работает 24/7):
 
 ```bash
@@ -42,10 +45,13 @@ npm install -g pm2
 pm2 start server.js --name messenger
 pm2 save
 pm2 startup
+```
+
 4. Открыть в браузере
 text
 http://localhost:8080
-🛠 ТЕХНОЛОГИИ
+
+# 🛠 ТЕХНОЛОГИИ
 Компонент	Технология
 Backend	Node.js, WebSocket (ws)
 Frontend	Чистый HTML, CSS, JavaScript
@@ -54,7 +60,8 @@ Frontend	Чистый HTML, CSS, JavaScript
 Запуск	PM2 — 24/7, автозапуск
 Файлы	Multer — загрузка файлов
 Версионирование	Git, GitHub
-📁 СТРУКТУРА ПРОЕКТА
+
+#📁 СТРУКТУРА ПРОЕКТА
 text
 messenger-pro/
 │
@@ -77,17 +84,22 @@ messenger-pro/
 pm2 start server.js --name messenger
 pm2 save
 pm2 startup
+```
+
 Просмотр статуса
 ```bash
 pm2 status
 pm2 logs messenger
+```
 Перезапуск
 ```bash
 pm2 restart messenger
+```
 Остановка
 ```bash
 pm2 stop messenger
 pm2 delete messenger
+```
 
 #📱 ДОСТУП С ДРУГИХ УСТРОЙСТВ
 Замените localhost на IP вашего сервера:
@@ -115,10 +127,12 @@ v1.2.0	📎 Загрузка файлов и изображений
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs git
+```
 2. Клонирование
 ```bash
 git clone git@github.com:martyvase/messenger-pro.git
 cd messenger-pro
+```
 3. Установка и запуск
 ```bash
 npm install
@@ -126,15 +140,18 @@ npm install -g pm2
 pm2 start server.js --name messenger
 pm2 save
 pm2 startup
-Работа с Git
+```
+# Работа с Git
 Создать новую ветку
 ```bash
 git checkout -b feature/название
+```
 После изменений
 ```bash
 git add .
 git commit -m "Описание изменений"
 git push origin feature/название
+```
 
 ```bash
 # Эти файлы уже в .gitignore, но на всякий случай:
@@ -144,6 +161,7 @@ node_modules/
 *.log
 .env
 uploads/
+```
 
 #🤝 КАК ВНЕСТИ СВОЙ ВКЛАД
 Форкните репозиторий на GitHub
