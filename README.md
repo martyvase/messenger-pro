@@ -52,6 +52,7 @@ text
 http://localhost:8080
 
 ## 🛠 ТЕХНОЛОГИИ
+```text
 Компонент	Технология
 Backend	Node.js, WebSocket (ws)
 Frontend	Чистый HTML, CSS, JavaScript
@@ -60,9 +61,10 @@ Frontend	Чистый HTML, CSS, JavaScript
 Запуск	PM2 — 24/7, автозапуск
 Файлы	Multer — загрузка файлов
 Версионирование	Git, GitHub
+```
 
 ## 📁 СТРУКТУРА ПРОЕКТА
-text
+```text
 messenger-pro/
 │
 ├── server.js          # Серверная часть (WebSocket + HTTP)
@@ -77,6 +79,7 @@ messenger-pro/
 ├── messages.json      # База сообщений (создаётся автоматически, НЕ В GIT)
 │
 └── node_modules/      # Зависимости (не в Git, устанавливаются через npm)
+```
 
 ## 🔧 КОМАНДЫ ДЛЯ АДМИНИСТРИРОВАНИЯ
 Запуск через PM2
