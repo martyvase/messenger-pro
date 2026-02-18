@@ -323,9 +323,9 @@ wss.on('connection', (ws, req) => {
         console.log(`📋 Параметры: userId=${userId}, username=${username}`);
         
         if (!userId || !username) {
-            console.log('⚠️ Нет параметров, создаем временного пользователя');
-            userId = 'temp_' + Date.now();
-            username = 'User_' + Math.floor(Math.random() * 1000);
+            console.log('⚠️ Нет параметров, анонимное подключение запрещено');
+            ws.close();
+            return;
         }
         
         let user = users.find(u => u.id === userId);

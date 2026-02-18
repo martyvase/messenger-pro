@@ -1198,6 +1198,16 @@
         }
         
         connectWebSocket() {
+            console.log('Подключение к WebSocket');
+            console.log('userId:', this.userId);
+            console.log('username:', this.username);
+            
+            if (!this.userId || !this.username) {
+            	console.log('No userID. return to login page');
+                window.location.href = 'login.html';
+                return;
+            }
+
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const host = window.location.host;
             const wsUrl = `${protocol}//${host}/?userId=${this.userId}&username=${this.username}`;
