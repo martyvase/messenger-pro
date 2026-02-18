@@ -29,3 +29,6 @@ staging-*.json
 .idea/
 node_modules/
 users.json.backup
+groups.json
+group-messages.json
+*.backup
